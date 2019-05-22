@@ -1,0 +1,30 @@
+version: '2'
+services:
+  api:
+    build: .
+    image: businesses-api
+    restart: always
+    ports:
+      - 8000:8000
+    environment:
+      MYSQL_DATABASE: businesses
+      MYSQL_USER: businesses
+      MYSQL_PASSWORD: hunter2
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+
+  mysql:
+    image: mysql:5
+    restart: always
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db-init/:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+      MYSQL_DATABASE: businesses
+      MYSQL_USER: businesses
+      MYSQL_PASSWORD: hunter2
+
+volumes:
+  mysql-data:
+    # name: businesses-mysql-data
