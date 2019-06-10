@@ -23,3 +23,7 @@ Kill all docker containers
 **Ultimate fix:** Stops and removes everything (including volumes), then builds from scratch, and then starts (`sudo` every command if needed)
 
     docker-compose down -v && docker-compose build && docker-compose up
+
+**Desperate fix:** (don't do this if you have other Docker projects running): Quits all Docker processes, deletes all containers and images, and starts from a clean slate
+
+    docker kill $(docker ps -q); docker system prune -af; docker-compose up
