@@ -3,6 +3,8 @@ const router = require('express').Router();
 const { validateAgainstSchema } = require('../lib/validation');
 const { generateAuthToken, requireAuthentication } = require('../lib/auth');
 
+const { userSchema, insertNewUser, validateUser, getUserById, getUserByEmail } = require('../models/user');
+
 router.post('/', async (req, res) => {
     if (validateAgainstSchema(req.body, userSchema)) {
       try {
@@ -54,7 +56,7 @@ router.post('/', async (req, res) => {
   * Route to list all of a user's info excluding password
   */
 router.get('/:id', requireAuthentication, async (req, res, next) => {
-    const user = await getUserById(req.user)
+    // const user = await getUserById(req.user)
     if (req.params.id == req.user || user.admin == true) {
       try {
         var user = await getUserById(parseInt(req.params.id));
