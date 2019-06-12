@@ -8,12 +8,11 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const { validateAgainstSchema } = require('../lib/validation');
+const { validateAgainstSchema, validatePatchAgainstSchema } = require('../lib/validation');
 const { requireAuthentication } = require('../lib/auth');
 
 const {
   AssignmentSchema,
-  AssignmentPatchSchema,
   getAssignmentById,
   insertNewAssignment,
   replaceAssignmentById,
@@ -135,11 +134,11 @@ router.patch('/:id', requireAuthentication, async (req, res) => {
   }
 
   // Is this PATCH request has valid body?
-  // Note that we use `AssignmentPatchSchema` instead of `AssignmentSchema`
+  // Note that we use `validatePatchAgainstSchema` instead of `validateAgainstSchema`
   //    to make all schema fields optional appearance.
   //    If it has no field, it will not pass either since then req.body is empty
   //    , which is also checked in the validateAgainstSchema() function
-  if (!validateAgainstSchema(req.body, AssignmentPatchSchema)) {
+  if (!validatePatchAgainstSchema(req.body, AssignmentSchema)) {
     res.status(400).send({
       error: "Request body is not a valid"
     });
