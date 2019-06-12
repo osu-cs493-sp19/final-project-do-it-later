@@ -127,7 +127,7 @@ CREATE TABLE `submissions` (
   `assignment_id` INT(10) UNSIGNED NOT NULL,
   `student_id` INT(10) UNSIGNED NOT NULL,
   `timestamp` VARCHAR(27) NOT NULL,  -- ISO 8601 Datetime
-  `file` BLOB NOT NULL,
+  `file` VARCHAR(256) NOT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`assignment_id`) REFERENCES `assignments`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE

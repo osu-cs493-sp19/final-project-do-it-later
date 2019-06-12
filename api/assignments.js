@@ -3,6 +3,10 @@
  */
 
 const router = require('express').Router();
+const multer = require('multer');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const { validateAgainstSchema } = require('../lib/validation');
 const { requireAuthentication } = require('../lib/auth');
@@ -13,7 +17,7 @@ const {
   getAssignmentById,
   insertNewAssignment,
   replaceAssignmentById,
-  deleteAssignmentById
+  deleteAssignmentById,
 } = require('../models/assignment');
 
 // const {
@@ -25,24 +29,37 @@ const {
 // } = require('../models/course');
 
 const {
-  deleteSubmissionByAssignmentId
+  SubmissionSchema,
+  getSubmissionById,
+  deleteSubmissionByAssignmentId,
+  getSubmissionsPage,
+  saveSubmissionFile,
+  insertNewSubmission,
+  getDownloadStreamByFilename
 } = require('../models/submission');
 
 /*
- * Route to fetch info about a specific review.
+ * Route to fetch info about a specific assignment.
  */
 router.get('/:id', async (req, res, next) => {
+  // Does this assignment even exist?
+  const assignment_id = parseInt(req.params.id);
+  const assignment = await getAssignmentById(assignment_id);
+  if (assignment == undefined) {
+    next();
+  }
+
   try {
-    const review = await getAssignmentById(parseInt(req.params.id));
-    if (review) {
-      res.status(200).send(review);
+    const assignment = await getAssignmentById(parseInt(req.params.id));
+    if (assignment) {
+      res.status(200).send(assignment);
     } else {
       next();
     }
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Unable to fetch review.  Please try again later."
+      error: "Unable to fetch assignment.  Please try again later."
     });
     return;
   }
@@ -51,7 +68,7 @@ router.get('/:id', async (req, res, next) => {
 /*
  *  Create and store a new Assignment with specified data and adds it to the application's database.
     Only an authenticated User with 'admin' role or an authenticated 'instructor' User
-    whose ID matches the instructorId of the Course corresponding to the Assignment's courseId
+    whose ID matches the instructor_id of the Course corresponding to the Assignment's courseId
     can create an Assignment.
  */
 //router.post('/', async (req, res) => {
@@ -64,17 +81,8 @@ router.post('/', requireAuthentication, async (req, res) => {
     return;
   }
 
-  const user = await getUserById(req.authenticated_userid);
-  // pseudo data for testing only
-  // const user = {
-  //   id: '5',
-  //   role: 'student'
-  // };
-  // const user = {
-  //   id: '3',
-  //   role: 'instructor'
-  // };
   // Does this user has 'admin' or 'instructor' role?
+  const user = await getUserById(req.authenticatedUserId);
   if (user.role != 'admin' && user.role != 'instructor') {
     res.status(403).send({
       error: "Unauthorized to access the specified resource (not admin nor instructor)"
@@ -82,16 +90,8 @@ router.post('/', requireAuthentication, async (req, res) => {
     return;
   }
 
+  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
   const course = await getCourseById(req.body.course_id);
-  // pseudo data for testing only
-  //   id: '2',
-  //   instructorId: '4'
-  // };
-  // const course = {
-  //   id: '1',
-  //   instructor_id: '3'
-  // };
-  // Does this user'id match the `instructorId` of the Course that owns this assignment?
   if (user.id != course.instructor_id) {
     res.status(403).send({
       error: "Unauthorized to access the specified resource (you don't own this course)"
@@ -125,8 +125,8 @@ router.post('/', requireAuthentication, async (req, res) => {
       whose ID matches the `instructor_id` of the Course corresponding to the Assignment
       can update an Assignment.
 */
-router.patch('/:id', async (req, res) => {
-//router.patch('/:id', requireAuthentication, async (req, res) => {
+//router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireAuthentication, async (req, res) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
   const assignment = await getAssignmentById(assignment_id);
@@ -147,16 +147,7 @@ router.patch('/:id', async (req, res) => {
   }
 
   // Does this user has 'admin' or 'instructor' role?
-  const user = await getUserById(req.authenticated_userid);
-  // pseudo data for testing only
-  // const user = { // Doesn' own anything. Expect 403
-  //   id: '5',
-  //   role: 'student'
-  // };
-  // const user = { // owns course 1. Expect no error
-  //   id: '3',
-  //   role: 'instructor'
-  // };
+  const user = await getUserById(req.authenticatedUserId);
   if (user.role != 'admin' && user.role != 'instructor') {
     res.status(403).send({
       error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
@@ -164,21 +155,9 @@ router.patch('/:id', async (req, res) => {
     return;
   }
 
-  // Does this user'id match the `instructorId` of the Course that owns this assignment?
-  const course = await getCourseById(req.body.course_id);
-  // pseudo data for testing only
-  // const course = { // Expect 403
-  //   // req.params.id = 5 (in during manual test)
-  //   id: '2', // assignment 5 belongs to course 2, which is owned by user 4
-  //   instructor_id: '4' // Julianne Schutfort
-  // };
-  // const course = { // Expect no error
-  //   //req.params.id = 2 (in during manual test)
-  //   id: '1', // assignment 2 belongs to course 1, which is owned by user 3
-  //   instructor_id: '3' // Rob Hess
-  // };
+  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
+  const course = await getCourseById(assignment.course_id);
   if (user.id != course.instructor_id) {
-    // req.params.id = 5 (in during manual test)
     res.status(403).send({
       error: "Unauthorized to access the specified resource: You are not instructor of this course"
     });
@@ -210,8 +189,8 @@ router.patch('/:id', async (req, res) => {
     Only an authenticated User with 'admin' role or an authenticated 'instructor' User
     whose ID matches the instructor_id of the Course can delete an Assignment.
 */
-router.delete('/:id', async (req, res) => {
-//router.delete('/:id', requireAuthentication, async (req, res) => {
+//router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuthentication, async (req, res) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
   const assignment = await getAssignmentById(assignment_id);
@@ -220,16 +199,7 @@ router.delete('/:id', async (req, res) => {
   }
 
   // Does this user has 'admin' or 'instructor' role?
-  const user = getUserById(req.authenticated_userid);
-  // pseudo data for testing only
-  // const user = {
-  //   id: '5',
-  //   role: 'student'
-  // };
-  // const user = { // owns course 1. Expect no error
-  //   id: '3',
-  //   role: 'instructor'
-  // };
+  const user = getUserById(req.authenticatedUserId);
   if (user.role != 'admin' && user.role != 'instructor') {
     res.status(403).send({
       error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
@@ -237,19 +207,8 @@ router.delete('/:id', async (req, res) => {
     return;
   }
 
-  // Does this user'id match the `instructorId` of the Course that owns this assignment?
-  const course = await getCourseById(req.body.course_id);
-  // pseudo data for testing only
-  // const course = { // Expect 403
-  //   //req.params.id = 6
-  //   id: '3', // assignment #6 belongs to course 3, which is owned by user 10 (Ben Brewster)
-  //   instructor_id: '10'
-  // };
-  // const course = { // Expect no error
-  //   // req.params.id = 1
-  //   id: '1', // Assignment #1 belongs to course 1, which is owned by user 3 (Rob Hess)
-  //   instructor_id: '3'
-  // };
+  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
+  const course = await getCourseById(assignment.course_id);
   if (user.id != course.instructor_id) {
     res.status(403).send({
       error: "Unauthorized to access the specified resource: You are not instructor of this course"
@@ -260,43 +219,347 @@ router.delete('/:id', async (req, res) => {
   // (1) Remove this assignment from db
   let deleteAssignmentSuccessful = undefined;
   let deleteSubmissionSuccessful = undefined;
+  //let deleteSubmissionFileSuccessful = undefined;
+
   try {
     deleteAssignmentSuccessful = await deleteAssignmentById(assignment_id);
     if (!deleteAssignmentSuccessful) {
       console.error(err);
       res.status(500).send({
-        error: "Unable to delete review. Please try again later."
+        error: "Unable to delete assignment. Please try again later."
       });
       return;
     }
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Unable to delete review. Please try again later."
+      error: "Unable to delete assignment. Please try again later."
     });
     return;
   }
 
   // (2) Remove all connected submissions from db
-  // try {
-  //   deleteSubmissionSuccessful = await deleteSubmissionByAssignmentId(assignment_id);
-  //   if (!deleteSubmissionSuccessful) {
-  //     console.error(err);
-  //     res.status(500).send({
-  //       error: "Error(s) removing connected submission(s) of this assignment.  Please try again later."
-  //     });
-  //     return;
-  //   }
-  // } catch (err) {
-  //   console.error(err);
-  //   res.status(500).send({
-  //     error: "Error(s) removing connected submission(s) of this assignment.  Please try again later."
-  //   });
-  //   return;
-  // }
 
-  // if reach this point, both deleteAssignmentSuccessful and deleteSubmissionSuccessful must be true
+  // -- (2.1) Delete it in MySQL database
+  try {
+    deleteSubmissionSuccessful = await deleteSubmissionByAssignmentId(assignment_id);
+    if (!deleteSubmissionSuccessful) {
+      console.error(err);
+      res.status(500).send({
+        error: "Error(s) removing connected submission(s) of this assignment.  Please try again later."
+      });
+      return;
+    }
+    // -- (2.2) Delete it in MongoDB database
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error(s) removing connected submission(s) of this assignment.  Please try again later."
+    });
+    return;
+  }
+
+  // if reach this point, all deletions must have been successful
   res.status(204).end();
+});
+
+/*
+ * SUBMISSION
+ */
+
+/*  Returns the list of all Submissions for an Assignment.
+ *  This list should be paginated.
+ *  Only an authenticated User with 'admin' role or an 'instructor' role
+ *    whose ID matches the instructor_id of the Course corresponding
+ *    to the Assignment's courseId can fetch the Submissions for an Assignment.
+ */
+router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
+  // Does this assignment even exist?
+  const assignment_id = parseInt(req.params.id);
+  const assignment = await getAssignmentById(assignment_id);
+  if (assignment == undefined) {
+    next();
+  }
+
+  // Does this user has 'admin' or 'instructor' role?
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'admin' && user.role != 'instructor') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
+    });
+    return;
+  }
+
+  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
+  const course = await getCourseById(assignment.course_id);
+  if (user.id != course.instructor_id) {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not instructor of this course"
+    });
+    return;
+  }
+
+  try {
+    /*
+     * Fetch page info, generate HATEOAS links for surrounding pages and then
+     * send response.
+     */
+    const submissionPage = await getSubmissionsPage(parseInt(req.query.page) || 1);
+    submissionPage.links = {};
+    if (submissionPage.page < submissionPage.totalPages) {
+      submissionPage.links.nextPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.page + 1}`;
+      submissionPage.links.lastPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.totalPages}`;
+    }
+    if (submissionPage.page > 1) {
+      submissionPage.links.prevPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.page - 1}`;
+      submissionPage.links.firstPage = '/assignments/${assignment_id}/submissions?page=1';
+    }
+    res.status(200).send(submissionPage);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error fetching submissions list. Please try again later."
+    });
+  }
+});
+
+/*
+ *  Helper functions for uploading submission
+ */
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: `${__dirname}/uploads`,
+    filename: (req, file, callback) => {
+      const basename = crypto.pseudoRandomBytes(16).toString('hex');
+      const extension = path.extname(file.originalname);
+      callback(null, `${basename}.${extension}`);
+    }
+  }),
+  // No file type filter. All extensions are allowed
+  // fileFilter: (req, file, callback) => {
+  //   callback(null, !!imageTypes[file.mimetype])
+  // }
+});
+
+function removeUploadedFile(file_path) {
+  return new Promise((resolve, reject) => {
+    fs.unlink(file_path, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+/*  Create and store a new Submission data to MySQL database
+ *    and save its binary data to a separated MongoDB database.
+ *  Only an authenticated User with 'student' role who is enrolled in the Course
+ *    corresponding to the Assignment's courseId can create a Submission.
+ *  Note:
+ *    - The actual submissions file are stored in a seperated database
+ *      powered by MongoDB while its submission data is stored in the same MySQL database
+ *      that we have been using for Users, Courses, and Assignments
+ */
+router.post('/:id/submissions', requireAuthentication, upload.single('file'), async (req, res, next) => {
+  // console.log("== req.file:", req.file);
+  // console.log("== req.body:", req.body);
+
+  // Does this assignment even exist?
+  const assignment_id = parseInt(req.params.id);
+  const assignment = await getAssignmentById(assignment_id);
+  if (assignment == undefined) {
+    next();
+  }
+
+  // Does this POST request had valid body
+  if (!req.file || !validateAgainstSchema(req.body, SubmissionSchema)) {
+    res.status(400).send({
+      error: "Request body is not a valid assignment object."
+    });
+    return;
+  }
+
+  // Is this user a 'student'?
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'student') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not a student"
+    });
+    return;
+  }
+
+  // Is this student enrolled in the course that this assignment belongs to?
+  const course = getCourseById(assignment.course_id);
+  // TODO
+  // Check if a student is enrolled in the course that owns this assignment
+
+  // save the actual file to Mongodb
+  try {
+    const file = {
+      path: req.file.path,
+      filename: req.file.filename,
+      contentType: req.file.mimetype
+    };
+    const inserted_file_id = await saveSubmissionFile(file);
+    await removeUploadedFile(req.file.path);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error inserting submission into DB.  Please try again later."
+    });
+  }
+
+  // save submission data to MySQL
+  try {
+    const submission = {
+      assignment_id: req.body.assignment_id,
+      student_id: req.body.student_id,
+      timestamp: req.body.timestamp,
+      file: req.file.filename
+    }
+    const inserted_submission_id = await insertNewSubmission(submission);
+    res.status(201).send({
+      id: inserted_submission_id,
+      links: {
+        submission: `/assignments/${assignment_id}/submissions/${inserted_submission_id}`,
+        submission_file: `/assignments/${assignment_id}/submissions/${inserted_submission_id}/file/${req.file.filename}`,
+        assignment: `/assignments/${assignment_id}`,
+        course: `/courses/${course.id}`
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error inserting submission into DB.  Please try again later."
+    });
+  }
+
+});
+
+// Get submission by id
+router.get('/:assignment_id/submissions/:submission_id',
+            requireAuthentication,
+            async (req, res, next) => {
+  // Does this assignment even exist?
+  const assignment_id = parseInt(req.params.assignment_id);
+  const assignment = await getAssignmentById(assignment_id);
+  if (assignment == undefined) {
+    next();
+  }
+
+  // Does this submission even exist?
+  const submission_id = parseInt(req.params.submission_id);
+  const submission = await getSubmissionById(submission_id);
+  if (submission == undefined) {
+    next();
+  }
+
+  // Is this user a 'student'?
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'student') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not a student"
+    });
+    return;
+  }
+
+  // Is this student enrolled in the course that this assignment belongs to?
+  const course = getCourseById(assignment.course_id);
+  // TODO
+  // Check if a student is enrolled in the course that owns this assignment
+
+  // Does this student own this assignment?
+  if (submission.student_id != user.id) {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource. You don't own this assignment"
+    });
+    return;
+  }
+
+  try {
+    const responseBody = {
+      assignment_id: submission.assignment_id,
+      student_id: submission.student_id,
+      timestamp: submission.timestamp,
+      file: submission.file, // filename
+      links: {
+        submission_file: `/assignments/${submission.assignment_id}/submissions/${submission.id}/file/${submission.file}`,
+        assignment: `/assignments/${submission.assignment_id}`,
+        course: `/courses/${course.id}`
+      }
+    };
+    res.status(200).send(responseBody);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Unable to fetch submission. Please try again later."
+    });
+  }
+});
+
+// Get submission file by id
+router.get('/:assignment_id/submissions/:submission_id/file/:filename',
+            requireAuthentication,
+            async (req, res, next) => {
+  // Does this assignment even exist?
+  const assignment_id = parseInt(req.params.assignment_id);
+  const assignment = await getAssignmentById(assignment_id);
+  if (assignment == undefined) {
+    next();
+  }
+
+  // Does this submission even exist?
+  const submission_id = parseInt(req.params.submission_id);
+  const submission = await getSubmissionById(submission_id);
+  if (submission == undefined) {
+    next();
+  }
+
+  // Is this user a 'student'?
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'student') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not a student"
+    });
+    return;
+  }
+
+  // Is this student enrolled in the course that this assignment belongs to?
+  const course = getCourseById(assignment.course_id);
+  // TODO
+  // Check if a student is enrolled in the course that owns this assignment
+
+  // Does this student own this assignment?
+  if (submission.student_id != user.id) {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource. You don't own this assignment"
+    });
+    return;
+  }
+
+  const filename = req.params.filename;
+  try {
+    getDownloadStreamByFilename(filename)
+      .on('error', (err) => {
+        if (err.code === 'ENOENT') {
+          next();
+        } else {
+          next(err);
+        }
+      })
+      .on('file', (file) => {
+        res.status(200).type(file.metadata.contentType);
+      })
+      .pipe(res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Unable to fetch submission. Please try again later."
+    });
+  }
 });
 
 module.exports = router;
