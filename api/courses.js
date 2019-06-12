@@ -8,7 +8,8 @@ const { validateAgainstSchema } = require('../lib/validation');
 const {
   CourseSchema,
   getCoursePage,
-  addCourse
+  addCourse,
+  getCourseById
 } = require('../models/course');
 
 /*
@@ -59,10 +60,10 @@ router.get('/', async (req, res, next) => {
  * authenticated User with admin role can create a new Course.
  */
 router.post('/', async (req, res, next) => {
-  // validate request body
   if (validateAgainstSchema(req.body, CourseSchema)) {
     try {
       const insertId = await addCourse(req.body);
+
       res.status(201).send({ id: insertId });
     } catch (err) {
       next(err);
@@ -71,6 +72,25 @@ router.post('/', async (req, res, next) => {
     res.status(400).send({
       error: 'The request body was not a valid Course object.'
     });
+  }
+});
+
+/*
+ * GET /courses/{id}
+ *
+ * Fetches data about a specific Course, excluding the list of Students enrolled
+ * in the course and the list of Assignments for the courses.
+ */
+router.get('/:id', async (req, res, next) => {
+  try {
+    const course = await getCourseById(parseInt(req.params.id));
+    if (course) {
+      res.status(200).send(course);
+    } else {
+      next();
+    }
+  } catch (err) {
+    next(err);
   }
 });
 

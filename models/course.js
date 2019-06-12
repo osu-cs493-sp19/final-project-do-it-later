@@ -96,10 +96,10 @@ exports.getCoursePage = getCoursePage;
 function addCourse(course) {
   return new Promise((resolve, reject) => {
     // use only the fields specified in the schema
-    course = extractValidFields(course, CourseSchema);
+    const extractedCourse = extractValidFields(course, CourseSchema);
 
     const sql = 'INSERT INTO courses SET ?';
-    mysqlPool.query(sql, course, (err, results) => {
+    mysqlPool.query(sql, extractedCourse, (err, results) => {
       if (err) {
         reject(err);
       } else {
@@ -109,3 +109,24 @@ function addCourse(course) {
   });
 }
 exports.addCourse = addCourse;
+
+/*
+ * Returns a Promise that
+ * - resolves to a Course object with the specified ID on success, or
+ * - reject with an error on failure.
+ *
+ * Does not fetch Students enrolled in the Course or Assignments for the Course.
+ */
+function getCourseById(id) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM courses WHERE id = ?';
+    mysqlPool.query(sql, [id], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results[0]);
+      }
+    });
+  });
+}
+exports.getCourseById = getCourseById;
