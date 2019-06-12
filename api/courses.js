@@ -39,14 +39,16 @@ router.get('/', async (req, res, next) => {
     const termQuery = term ? `&term=${term}` : '';
     // if not last page, provide links to next and last pages
     if (coursePage.currentPage < coursePage.totalPages) {
-      coursePage.links.nextPage = `/courses?page=${coursePage.currentPage + 1}` +
+      coursePage.links.nextPage =
+        `/courses?page=${coursePage.currentPage + 1}` +
           subjectQuery + numberQuery + termQuery;
       coursePage.links.lastPage = `/courses?page=${coursePage.totalPages}` +
           subjectQuery + numberQuery + termQuery;
     }
     // if not first page, provide links to previous and first pages
     if (coursePage.currentPage > 1) {
-      coursePage.links.prevPage = `/courses?page=${coursePage.currentPage - 1}` +
+      coursePage.links.prevPage =
+        `/courses?page=${coursePage.currentPage - 1}` +
           subjectQuery + numberQuery + termQuery;
       coursePage.links.firstPage = `/courses?page=1` +
           subjectQuery + numberQuery + termQuery;
@@ -88,7 +90,8 @@ router.post('/', async (req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
-    const course = await getCourseById(parseInt(req.params.id));
+    const id = parseInt(req.params.id);
+    const course = await getCourseById(id);
     if (course) {
       res.status(200).send(course);
     } else {

@@ -6,8 +6,8 @@ const mysqlPool = require('../lib/mysqlPool');
 const { extractValidFields } = require('../lib/validation');
 
 /*
- * This schema is used for validating the content of the request body before
- * inserting it to the database.
+ * This schema is used for validating the required content of the request body
+ * before inserting it to the database.
  */
 const CourseSchema = {
   subject: { required: true },
@@ -19,19 +19,21 @@ const CourseSchema = {
 exports.CourseSchema = CourseSchema;
 
 /*
- * Returns a Promise that
- * - resolves to an object containing info of a page of existing courses, or
- * - rejects with an error on failure.
+ * Fetches a paginated list of all Courses.
  *
  * Params:
  *   page     Page of Courses to fetch. Default to 1 if not specified.
  *   subject  Fetch only Courses with the specified subject code.
  *   number   Fetch only Courses with the specified course number.
  *   term     Fetch only Courses with the specified academic term.
+ *
+ * Returns a Promise that
+ * - resolves to an object that contains info of a page of existing courses, or
+ * - rejects with an error on failure.
  */
 function getCoursePage(page, subject, number, term) {
   return new Promise((resolve, reject) => {
-    // filter Course's subject, number, and term if provided
+    // filter Course's subject, number, and term if they are provided
     // otherwise, `LIKE %%` will be used to match all patterns
     const sql =
       `SELECT *
@@ -89,13 +91,14 @@ function getCoursePage(page, subject, number, term) {
 exports.getCoursePage = getCoursePage;
 
 /*
- * Inserts a Course into the database and returns a Promise that
+ * Inserts a Course into the database.
+ *
+ * Returns a Promise that
  * - resolves to the ID of the newly inserted object on success, or
  * - rejects with an error on failure.
  */
 function addCourse(course) {
   return new Promise((resolve, reject) => {
-    // use only the fields specified in the schema
     const newCourse = extractValidFields(course, CourseSchema);
 
     const sql = 'INSERT INTO courses SET ?';
@@ -111,10 +114,13 @@ function addCourse(course) {
 exports.addCourse = addCourse;
 
 /*
+ * Fetch data about a specific Course.
+ *
  * Returns a Promise that
  * - resolves to a Course object with the specified ID on success, or
  * - reject with an error on failure.
  *
+ * Notes:
  * Does not fetch Students enrolled in the Course or Assignments for the Course.
  */
 function getCourseById(id) {
@@ -132,10 +138,13 @@ function getCourseById(id) {
 exports.getCourseById = getCourseById;
 
 /*
- * Partially updates a Course and returns a Promise that
- * - resolves to a successful status on success, or
+ * Updates data for a specific Course.
+ *
+ * Returns a Promise that
+ * - resolves to true on successful update or false on non-update, or
  * - rejects with an error on failure.
  *
+ * Notes:
  * Does not modify this Course's Students and Assignments.
  */
 function updateCourseById(id, course) {
@@ -168,12 +177,15 @@ function updateCourseById(id, course) {
 exports.updateCourseById = updateCourseById;
 
 /*
- * Deletes a Course based on its ID. All Students enrolling in this Course and
- * all Assignments for this Course will also be deleted.
+ * Removes a specific Course from the database.
  *
  * Returns a Promise that
- * - resolves to a successful status on success, or
+ * - resolves to true on successful removal or false on non-removal, or
  * - rejects with an error on failure.
+ *
+ * Notes:
+ * All Students enrolling in this Course and all Assignments for this Course
+ * will also be removed.
  */
 function deleteCourseById(id) {
   return new Promise((resolve, reject) => {
