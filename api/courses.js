@@ -4,12 +4,16 @@
 
 const router = require('express').Router();
 
-const { validateAgainstSchema } = require('../lib/validation');
+const {
+  validateAgainstSchema,
+  validatePatchAgainstSchema
+} = require('../lib/validation');
 const {
   CourseSchema,
   getCoursePage,
   addCourse,
-  getCourseById
+  getCourseById,
+  updateCourseById
 } = require('../models/course');
 
 /*
@@ -91,6 +95,35 @@ router.get('/:id', async (req, res, next) => {
     }
   } catch (err) {
     next(err);
+  }
+});
+
+/*
+ * PATCH /courses/{id}
+ *
+ * Performs a partial update on the data for the Course. The enrolled Students
+ * and Assignments for the Course will not be modified via this endpoint.
+ *
+ * Only an authenticated admin User or an authenticated instructor User whose
+ * ID matches the `instructor_id` of the Course can update Course information.
+ */
+router.patch('/:id', async (req, res, next) => {
+  if (validatePatchAgainstSchema(req.body, CourseSchema)) {
+    try {
+      const id = parseInt(req.params.id);
+      const updateSuccess = await updateCourseById(id, req.body);
+      if (updateSuccess) {
+        res.status(200).send();
+      } else {
+        next();
+      }
+    } catch (err) {
+      next(err);
+    }
+  } else {
+    res.status(400).send({
+      error: 'The request body did not contain any valid Course field.'
+    });
   }
 });
 

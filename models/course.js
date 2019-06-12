@@ -96,10 +96,10 @@ exports.getCoursePage = getCoursePage;
 function addCourse(course) {
   return new Promise((resolve, reject) => {
     // use only the fields specified in the schema
-    const extractedCourse = extractValidFields(course, CourseSchema);
+    const newCourse = extractValidFields(course, CourseSchema);
 
     const sql = 'INSERT INTO courses SET ?';
-    mysqlPool.query(sql, extractedCourse, (err, results) => {
+    mysqlPool.query(sql, newCourse, (err, results) => {
       if (err) {
         reject(err);
       } else {
@@ -130,3 +130,37 @@ function getCourseById(id) {
   });
 }
 exports.getCourseById = getCourseById;
+
+/*
+ * Partially updates a Course and returns a Promise that
+ * - resolves to a successful status on success, or
+ * - rejects with an error on failure.
+ */
+function updateCourseById(id, course) {
+  return new Promise((resolve, reject) => {
+    const newCourse = extractValidFields(course, CourseSchema);
+    const newCourseKeys = Object.keys(newCourse);
+
+    let newCourseQuery = '';
+    newCourseKeys.forEach((field, index) => {
+      newCourseQuery += `${field} = ?`;
+      if (index < newCourseKeys.length - 1) {
+        newCourseQuery += ', ';
+      }
+    });
+
+    // values to be escaped and put into the database query
+    const queryValues = Object.values(newCourse);
+    queryValues.push(id);
+
+    const sql = `UPDATE courses SET ${newCourseQuery} WHERE id = ?`;
+    mysqlPool.query(sql, queryValues, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+exports.updateCourseById = updateCourseById;
