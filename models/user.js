@@ -35,3 +35,44 @@ exports.insertNewUser = async (user) => {
         );
       });
     }
+/*
+ * Fetch a user from the DB based on user ID.
+ */
+exports.getUserById = async (id) => {
+  return new Promise((resolve, reject) => {
+    mysqlPool.query(
+      'SELECT * FROM users WHERE id = ?',
+      [ id ],
+      (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results[0]);
+        }
+      }
+    );
+  });
+};
+
+function getUserByEmail (email) {
+  return new Promise((resolve, reject) => {
+    mysqlPool.query(
+      'SELECT * FROM users WHERE email = ?',
+      [ email ],
+      (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results[0]);
+        }
+      }
+    );
+  });
+};
+exports.getUserByEmail = getUserByEmail;
+
+exports.validateUser = async (email, password) => {
+  const user = await getUserByEmail(email);
+  const authenticated = user && await bcrypt.compare(password, user.password);
+  return authenticated;
+};
