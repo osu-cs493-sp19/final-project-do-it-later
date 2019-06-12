@@ -4,14 +4,15 @@
 
 const router = require('express').Router();
 
+const { validateAgainstSchema } = require('../lib/validation');
 const {
   CourseSchema,
   getCoursePage,
+  addCourse
 } = require('../models/course');
 
 /*
  * GET /courses
- * GET /courses?page=3
  *
  * Fetches the paginated list of all Courses. The Courses returned do not
  * contain the list of Students in the Course or the Assignments for the Course.
@@ -48,6 +49,28 @@ router.get('/', async (req, res, next) => {
     res.status(200).send(coursePage);
   } catch (err) {
     next(err);
+  }
+});
+
+/*
+ * POST /courses
+ *
+ * Creates a new Course with specified data and adds it to the database. Only
+ * authenticated User with admin role can create a new Course.
+ */
+router.post('/', async (req, res, next) => {
+  // validate request body
+  if (validateAgainstSchema(req.body, CourseSchema)) {
+    try {
+      const insertId = await addCourse(req.body);
+      res.status(201).send({ id: insertId });
+    } catch (err) {
+      next(err);
+    }
+  } else {
+    res.status(400).send({
+      error: 'The request body was not a valid Course object.'
+    });
   }
 });
 

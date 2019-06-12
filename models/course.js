@@ -3,6 +3,7 @@
  */
 
 const mysqlPool = require('../lib/mysqlPool');
+const { extractValidFields } = require('../lib/validation');
 
 /*
  * This schema is used for validating the content of the request body before
@@ -86,3 +87,25 @@ function getCoursePage(page, subject, number, term) {
   });
 }
 exports.getCoursePage = getCoursePage;
+
+/*
+ * Inserts a Course into the database and returns a Promise that
+ * - resolves to the ID of the newly inserted object on success, or
+ * - rejects with an error on failure.
+ */
+function addCourse(course) {
+  return new Promise((resolve, reject) => {
+    // use only the fields specified in the schema
+    course = extractValidFields(course, CourseSchema);
+
+    const sql = 'INSERT INTO courses SET ?';
+    mysqlPool.query(sql, course, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.insertId);
+      }
+    });
+  });
+}
+exports.addCourse = addCourse;
