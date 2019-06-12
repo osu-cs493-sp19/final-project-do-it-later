@@ -135,6 +135,8 @@ exports.getCourseById = getCourseById;
  * Partially updates a Course and returns a Promise that
  * - resolves to a successful status on success, or
  * - rejects with an error on failure.
+ *
+ * Does not modify this Course's Students and Assignments.
  */
 function updateCourseById(id, course) {
   return new Promise((resolve, reject) => {
@@ -164,3 +166,25 @@ function updateCourseById(id, course) {
   });
 }
 exports.updateCourseById = updateCourseById;
+
+/*
+ * Deletes a Course based on its ID. All Students enrolling in this Course and
+ * all Assignments for this Course will also be deleted.
+ *
+ * Returns a Promise that
+ * - resolves to a successful status on success, or
+ * - rejects with an error on failure.
+ */
+function deleteCourseById(id) {
+  return new Promise((resolve, reject) => {
+    const sql = 'DELETE FROM courses WHERE id = ?';
+    mysqlPool.query(sql, [id], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+exports.deleteCourseById = deleteCourseById;

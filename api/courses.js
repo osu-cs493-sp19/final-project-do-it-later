@@ -13,7 +13,8 @@ const {
   getCoursePage,
   addCourse,
   getCourseById,
-  updateCourseById
+  updateCourseById,
+  deleteCourseById
 } = require('../models/course');
 
 /*
@@ -101,8 +102,8 @@ router.get('/:id', async (req, res, next) => {
 /*
  * PATCH /courses/{id}
  *
- * Performs a partial update on the data for the Course. The enrolled Students
- * and Assignments for the Course will not be modified via this endpoint.
+ * Performs a partial update on the data for the Course. Enrolled Students and
+ * Assignments for the Course will not be modified via this endpoint.
  *
  * Only an authenticated admin User or an authenticated instructor User whose
  * ID matches the `instructor_id` of the Course can update Course information.
@@ -124,6 +125,23 @@ router.patch('/:id', async (req, res, next) => {
     res.status(400).send({
       error: 'The request body did not contain any valid Course field.'
     });
+  }
+});
+
+/*
+ * DELETE /courses/{id}
+ *
+ * Completely removes the data for the specified Course, including all enrolled
+ * Students, all Assignments, etc.
+ *
+ * Only an authenticated admin User can remove a Course.
+ */
+router.delete('/:id', async (req, res, next) => {
+  const deleteSuccess = await deleteCourseById(parseInt(req.params.id));
+  if (deleteSuccess) {
+    res.status(204).send();
+  } else {
+    next();
   }
 });
 
