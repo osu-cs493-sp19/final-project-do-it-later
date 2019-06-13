@@ -108,14 +108,14 @@ INSERT INTO `assignments`
   (`id`, `course_id`, `title`, `points`, `due`)
 VALUES
   (1, 1, 'Assignment 1: API Design, Implementation, and Containerization', 100, '2019-04-23T23:59:59-07:00'),
-  (2, 1, 'Assignment 2: API Data Storage', 90, '2019-05-06T23:59:59-07:00'),
+  (2, 1, 'Assignment 2: API Data Storage', 100, '2019-05-06T23:59:59-07:00'),
   (3, 1, 'Assignment 3: API Authentication and Authorization', 100, '2019-05-20T23:59:59-07:00'),
   (4, 1, 'Assignment 4: File Uploads and Offline Work', 100, '2019-06-03T23:59:59-07:00'),
   (5, 2, 'Homework 3: Dynamic Programming', 100, '2019-03-13T23:59:59-07:00'),
-  (6, 3, 'Program 3: Smallsh', 135, '2019-03-05T23:59:59-08:00'),
+  (6, 3, 'Program 3: Smallsh', 100, '2019-03-05T23:59:59-08:00'),
   (7, 15, 'Homework 6', 100, '2018-04-23T23:59:59-07:00'),
-  (8, 8, 'Assignment 2: Parsing and Syntax-Directed Translation', 86, '2019-05-13T23:59:59-07:00'),
-  (9, 8, 'Assignment 3: Abstract Syntax Trees and Simple Code Generation', 94, '2019-05-27T23:59:59-07:00'),
+  (8, 8, 'Assignment 2: Parsing and Syntax-Directed Translation', 100, '2019-05-13T23:59:59-07:00'),
+  (9, 8, 'Assignment 3: Abstract Syntax Trees and Simple Code Generation', 100, '2019-05-27T23:59:59-07:00'),
   (10, 18, 'Project Step 7: Turn in Final Working Project', 100, '2019-03-19T23:59:59-07:00');
 
 --
@@ -132,5 +132,32 @@ CREATE TABLE `submissions` (
   FOREIGN KEY (`assignment_id`) REFERENCES `assignments`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Table structure for table `courses_students`
+-- (Since Course and Student have a many-to-many relationship)
+--
+DROP TABLE IF EXISTS `courses_students`;
+CREATE TABLE `courses_students` (
+  `course_id` INT(10) UNSIGNED NOT NULL,
+  `student_id` INT(10) UNSIGNED NOT NULL,
+  UNIQUE (`course_id`, `student_id`),
+  FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `courses_students`
+--
+INSERT INTO `courses_students`
+  (`course_id`, `student_id`)
+VALUES
+  (1, 2), (1, 5), (1, 6),
+  (3, 1), (3, 7),
+  (4, 5), (4, 8), (4, 9),
+  (7, 2), (7, 5), (7, 6), (7, 7), (7, 8),
+  (9, 2), (9, 6), (9, 7),(9, 8),
+  (17, 5), (17, 6),
+  (19, 12);
 
 SET FOREIGN_KEY_CHECKS = 1;
