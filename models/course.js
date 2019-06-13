@@ -4,6 +4,7 @@
 
 const mysqlPool = require('../lib/mysqlPool');
 const { extractValidFields } = require('../lib/validation');
+const { getUserById } = require('../models/user');
 
 /*
  * This schema is used for validating the required content of the request body
@@ -200,3 +201,142 @@ function deleteCourseById(id) {
   });
 }
 exports.deleteCourseById = deleteCourseById;
+
+/*
+ * Fetches a list of students enrolled in the Course.
+ *
+ * Returns a Promise that
+ * - resolves to a list that contains the User IDs of all Students currently
+ * enrolled in the Course on success.
+ * - rejects with an error on failure.
+ */
+function getCourseStudents(courseId) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT student_id FROM courses_students WHERE course_id = ?';
+    mysqlPool.query(sql, [courseId], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+exports.getCourseStudents = getCourseStudents;
+
+/*
+ * Validates the request body of POST /courses/{id}/students.
+ *
+ * Returns true if the request body is a valid update object---that is to have
+ * at least one of the two fields `add` and `remove`, both of which are arrays.
+ * Returns false otherwise.
+ */
+function validateEnrollmentUpdateBody(obj) {
+  return obj && Array.isArray(obj.add) && obj.add.length > 0 &&
+                Array.isArray(obj.remove) && obj.remove.length > 0;
+}
+exports.validateEnrollmentUpdateBody = validateEnrollmentUpdateBody;
+
+/*
+ * Enrolls a new student to a Course.
+ *
+ * Returns a Promise that
+ * - resolves on success, or
+ * - reject with an error on failure.
+ */
+function addStudentToCourse(courseId, studentId) {
+  return new Promise((resolve, reject) => {
+    const sql =
+      'INSERT INTO courses_students (course_id, student_id) VALUES (?, ?)';
+    mysqlPool.query(sql, [courseId, studentId], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+/*
+ * Removes an existing student from a Course.
+ *
+ * Returns a Promise that
+ * - resolves to true on successful removal or false on non-removal, or
+ * - reject with an error on failure.
+ */
+function deleteStudentFromCourse(courseId, studentId) {
+  return new Promise((resolve, reject) => {
+    const sql =
+      'DELETE FROM courses_students WHERE course_id = ? AND student_id = ?';
+    mysqlPool.query(sql, [courseId, studentId], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results.affectedRows > 0);
+      }
+    });
+  });
+}
+
+/*
+ * Updates enrollment for a Course.
+ *
+ * Returns a Promise that
+ * - resolves to
+ * - reject with an error on failure.
+ */
+function updateCourseEnrollment(courseId, updateObj) {
+  return new Promise(async (resolve, reject) => {
+    let addCount = 0;
+    let removeCount = 0;
+
+    // if there is an `add` array field, enroll those Students
+    if (updateObj.add) {
+      for (let i = 0, len = updateObj.add.length; i < len; i++) {
+        const userId = updateObj.add[i];
+        try {
+          // make sure these users are students, ignore if they're not
+          const user = await getUserById(userId);
+          if (!user || user.role !== 'student') {
+            continue;
+          }
+
+          // insert this student to the Course
+          await addStudentToCourse(courseId, userId);
+          addCount++;
+        } catch (err) {
+          // only reject with errors that are not about duplicate entries
+          if (!err || err.code !== 'ER_DUP_ENTRY') {
+            reject(err);
+            return;
+          }
+        }
+      }
+    }
+
+    // if there is a `remove` array field, unenroll those Students
+    if (updateObj.remove) {
+      for (let i = 0, len = updateObj.remove.length; i < len; i++) {
+        const userId = updateObj.remove[i];
+        try {
+          // no need to check for role, as the removal function will do nothing
+          // if the pair (courseId, userId) doesn't match any row
+          const deleteSuccess = await deleteStudentFromCourse(courseId, userId);
+          if (deleteSuccess) {
+            removeCount++;
+          }
+        } catch (err) {
+          reject(err);
+          return;
+        }
+      }
+    }
+
+    resolve({
+      addCount: addCount,
+      removeCount: removeCount
+    });
+  });
+}
+exports.updateCourseEnrollment = updateCourseEnrollment;

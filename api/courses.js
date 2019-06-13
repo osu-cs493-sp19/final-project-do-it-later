@@ -14,7 +14,10 @@ const {
   addCourse,
   getCourseById,
   updateCourseById,
-  deleteCourseById
+  deleteCourseById,
+  getCourseStudents,
+  validateEnrollmentUpdateBody,
+  updateCourseEnrollment
 } = require('../models/course');
 
 /*
@@ -90,15 +93,13 @@ router.post('/', async (req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    const course = await getCourseById(id);
+    const course = await getCourseById(parseInt(req.params.id));
     if (course) {
       res.status(200).send(course);
     } else {
       next();
     }
-  } catch (err) {
-    next(err);
+  } catch (err) { next(err);
   }
 });
 
@@ -112,9 +113,10 @@ router.get('/:id', async (req, res, next) => {
  * ID matches the `instructor_id` of the Course can update Course information.
  */
 router.patch('/:id', async (req, res, next) => {
+  const id = parseInt(req.params.id);
+
   if (validatePatchAgainstSchema(req.body, CourseSchema)) {
     try {
-      const id = parseInt(req.params.id);
       const updateSuccess = await updateCourseById(id, req.body);
       if (updateSuccess) {
         res.status(200).send();
@@ -147,5 +149,58 @@ router.delete('/:id', async (req, res, next) => {
     next();
   }
 });
+
+/*
+ * GET /courses/{id}/students
+ *
+ * Fetches a list of the students enrolled in the Course.
+ *
+ * Only an authenticated admin or an instructor who teaches this Course can
+ * fetch the student list.
+ */
+router.get('/:id/students', async (req, res, next) => {
+  try {
+    const students = await getCourseStudents(parseInt(req.params.id));
+    if (students && students.length > 0) {
+      for (var i = 0, len = students.length; i < len; i++)  {
+        students[i] = students[i].student_id;
+      }
+      res.status(200).send({ students: students });
+    } else {
+      res.status(404).send({
+        error: 'The specified Course was not found, or the Course does not ' +
+               'have any students enrolled.'
+      });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+ * POST /courses/{id}/students
+ *
+ * Enrolls and un-enrolls students from the Course.
+ *
+ * Only an authenticated admin or an instructor who teaches this Course can
+ * update enrollment for this Course.
+ */
+router.post('/:id/students', async (req, res, next) => {
+  const courseId = parseInt(req.params.id);
+
+  try {
+    if (validateEnrollmentUpdateBody(req.body)) {
+      const updateResult = await updateCourseEnrollment(courseId, req.body);
+      res.status(200).send(updateResult);
+    } else {
+      res.status(400).send({
+        error: 'The provided body was not a valid enrollment update object.'
+      });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 module.exports = router;
