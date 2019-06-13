@@ -54,6 +54,39 @@ exports.getUserById = async (id) => {
   });
 };
 
+exports.getInstructorCoursesById = async (id) => {
+  return new Promise((resolve, reject) => {
+    mysqlPool.query(
+      'SELECT id FROM courses WHERE instructor_id = ?',
+      [ id ],
+      (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      }
+    );
+  });
+};
+
+exports.getStudentCoursesById = async (id) => {
+  return new Promise((resolve, reject) => {
+    mysqlPool.query(
+      'SELECT course_id FROM courses_students WHERE student_id = ?',
+      [ id ],
+      (err, results) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      }
+    );
+  });
+};
+
+
 function getUserByEmail (email) {
   return new Promise((resolve, reject) => {
     mysqlPool.query(

@@ -3,7 +3,7 @@ const router = require('express').Router();
 const { validateAgainstSchema } = require('../lib/validation');
 const { generateAuthToken, requireAuthentication, isAdmin } = require('../lib/auth');
 
-const { userSchema, insertNewUser, validateUser, getUserById, getUserByEmail } = require('../models/user');
+const { userSchema, insertNewUser, validateUser, getUserById, getUserByEmail, getInstructorCoursesById, getStudentCoursesById } = require('../models/user');
 
 router.post('/', async (req, res) => {
   if (validateAgainstSchema(req.body, userSchema)) {
@@ -65,12 +65,20 @@ router.post('/login', async (req, res) => {
   * Route to list all of a user's info excluding password
   */
 router.get('/:id', requireAuthentication, async (req, res, next) => {
-  const reqUser = await getUserById(req.user)
-  if (req.params.id == req.user || reqUser.role == "admin") {
+  const reqUser = await getUserById(req.authenticatedUserId)
+  if (req.params.id == req.authenticatedUserId || reqUser.role == "admin") {
     try {
       var user = await getUserById(parseInt(req.params.id));
       if (user) {
         delete user.password
+        if (user.role == "instructor"){
+          const instructorCourseIds = await getInstructorCoursesById(parseInt(req.params.id));
+          user.courses = instructorCourseIds;
+        }
+        else if (user.role == "student"){
+          const studentCourseIds = await getStudentCoursesById(parseInt(req.params.id));
+          user.courses = studentCourseIds
+        }
         res.status(200).send({ user });
       } else {
         next();
