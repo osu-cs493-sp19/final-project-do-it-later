@@ -26,7 +26,7 @@ const {
  * Fetches the paginated list of all Courses. The Courses returned do not
  * contain the list of Students in the Course or the Assignments for the Course.
  */
-router.get('/', async (req, res, next) => {
+router.get('/', async (req, res) => {
   try {
     // collect URL parameters
     const currentPage = parseInt(req.query.page) || 1;
@@ -59,7 +59,10 @@ router.get('/', async (req, res, next) => {
 
     res.status(200).send(coursePage);
   } catch (err) {
-    next(err);
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to fetch Courses. Please try again later.'
+    });
   }
 });
 
@@ -69,18 +72,21 @@ router.get('/', async (req, res, next) => {
  * Creates a new Course with specified data and adds it to the database. Only
  * authenticated User with admin role can create a new Course.
  */
-router.post('/', async (req, res, next) => {
-  if (validateAgainstSchema(req.body, CourseSchema)) {
-    try {
-      const insertId = await addCourse(req.body);
-
-      res.status(201).send({ id: insertId });
-    } catch (err) {
-      next(err);
-    }
-  } else {
+router.post('/', async (req, res) => {
+  if (!validateAgainstSchema(req.body, CourseSchema)) {
     res.status(400).send({
       error: 'The request body was not a valid Course object.'
+    });
+    return;
+  }
+
+  try {
+    const insertId = await addCourse(req.body);
+    res.status(201).send({ id: insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to insert the Course. Please try again later.'
     });
   }
 });
@@ -94,12 +100,17 @@ router.post('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const course = await getCourseById(parseInt(req.params.id));
-    if (course) {
-      res.status(200).send(course);
-    } else {
+    if (!course) {
       next();
+      return;
     }
-  } catch (err) { next(err);
+
+    res.status(200).send(course);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to fetch the Course. Please try again later.'
+    });
   }
 });
 
@@ -115,20 +126,25 @@ router.get('/:id', async (req, res, next) => {
 router.patch('/:id', async (req, res, next) => {
   const id = parseInt(req.params.id);
 
-  if (validatePatchAgainstSchema(req.body, CourseSchema)) {
-    try {
-      const updateSuccess = await updateCourseById(id, req.body);
-      if (updateSuccess) {
-        res.status(200).send();
-      } else {
-        next();
-      }
-    } catch (err) {
-      next(err);
-    }
-  } else {
+  if (!validatePatchAgainstSchema(req.body, CourseSchema)) {
     res.status(400).send({
       error: 'The request body did not contain any valid Course field.'
+    });
+    return;
+  }
+
+  try {
+    const updateSuccess = await updateCourseById(id, req.body);
+    if (!updateSuccess) {
+      next();
+      return;
+    }
+
+    res.status(200).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to update the Course. Please try again later.'
     });
   }
 });
@@ -142,11 +158,19 @@ router.patch('/:id', async (req, res, next) => {
  * Only an authenticated admin User can remove a Course.
  */
 router.delete('/:id', async (req, res, next) => {
-  const deleteSuccess = await deleteCourseById(parseInt(req.params.id));
-  if (deleteSuccess) {
+  try {
+    const deleteSuccess = await deleteCourseById(parseInt(req.params.id));
+    if (!deleteSuccess) {
+      next();
+      return;
+    }
+
     res.status(204).send();
-  } else {
-    next();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to delete the Course. Please try again later.'
+    });
   }
 });
 
@@ -161,19 +185,20 @@ router.delete('/:id', async (req, res, next) => {
 router.get('/:id/students', async (req, res, next) => {
   try {
     const students = await getCourseStudents(parseInt(req.params.id));
-    if (students && students.length > 0) {
-      for (var i = 0, len = students.length; i < len; i++)  {
-        students[i] = students[i].student_id;
-      }
-      res.status(200).send({ students: students });
-    } else {
-      res.status(404).send({
-        error: 'The specified Course was not found, or the Course does not ' +
-               'have any students enrolled.'
-      });
+    if (!students || !students.length) {
+      next();
+      return;
     }
+
+    for (var i = 0, len = students.length; i < len; i++)  {
+      students[i] = students[i].student_id;
+    }
+    res.status(200).send({ students: students });
   } catch (err) {
-    next(err);
+    console.error(err);
+    res.status(500).send({
+      error: "Unable to fetch the Course's students. Please try again later."
+    });
   }
 });
 
@@ -189,16 +214,26 @@ router.post('/:id/students', async (req, res, next) => {
   const courseId = parseInt(req.params.id);
 
   try {
-    if (validateEnrollmentUpdateBody(req.body)) {
-      const updateResult = await updateCourseEnrollment(courseId, req.body);
-      res.status(200).send(updateResult);
-    } else {
+    if (!validateEnrollmentUpdateBody(req.body)) {
       res.status(400).send({
         error: 'The provided body was not a valid enrollment update object.'
       });
+      return;
     }
+
+    // make sure the course exists before updating its students
+    const course = await getCourseById(courseId);
+    if (!course) {
+      next();
+      return;
+    }
+
+    const updateResult = await updateCourseEnrollment(courseId, req.body);
+    res.status(200).send(updateResult);
   } catch (err) {
-    next(err);
+    res.status(500).send({
+      error: "Unable to update the Course's students. Please try again later."
+    });
   }
 });
 

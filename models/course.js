@@ -57,34 +57,35 @@ function getCoursePage(page, subject, number, term) {
       (err, results) => {
         if (err) {
           reject(err);
-        } else {
-          // pagination must come after filtering
-          const numCourses = results.length;
-          const pageSize = 10;  // Courses per page
-
-          // e.g. if 31 Courses in total, then
-          // page 1 (1-10), page 2 (11-20), page 3 (21-30), page 4 (31)
-          const lastPage = Math.ceil(numCourses / pageSize);
-
-          // force the current page to be within [1..lastPage]
-          page = (page > lastPage) ? lastPage : page;
-          page = (page < 1) ? 1 : page;
-
-          // e.g. if on page 2, the offset will be 10 courses
-          const offset = (page - 1) * pageSize;
-
-          // array indices start at 0,
-          // so the page starts at offset and stops before offset + pageSize
-          results = results.slice(offset, offset + pageSize);
-
-          resolve({
-            courses: results,
-            currentPage: page,
-            totalPages: lastPage,
-            pageSize: pageSize,
-            totalCourses: numCourses
-          });
+          return;
         }
+
+        // pagination must come after filtering
+        const numCourses = results.length;
+        const pageSize = 10;  // Courses per page
+
+        // e.g. if 31 Courses in total, then
+        // page 1 (1-10), page 2 (11-20), page 3 (21-30), page 4 (31)
+        const lastPage = Math.ceil(numCourses / pageSize);
+
+        // force the current page to be within [1..lastPage]
+        page = (page > lastPage) ? lastPage : page;
+        page = (page < 1) ? 1 : page;
+
+        // e.g. if on page 2, the offset will be 10 courses
+        const offset = (page - 1) * pageSize;
+
+        // array indices start at 0,
+        // so the page starts at offset and stops before offset + pageSize
+        results = results.slice(offset, offset + pageSize);
+
+        resolve({
+          courses: results,
+          currentPage: page,
+          totalPages: lastPage,
+          pageSize: pageSize,
+          totalCourses: numCourses
+        });
       }
     );
   });
@@ -106,9 +107,10 @@ function addCourse(course) {
     mysqlPool.query(sql, newCourse, (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results.insertId);
+        return;
       }
+
+      resolve(results.insertId);
     });
   });
 }
@@ -130,9 +132,10 @@ function getCourseById(id) {
     mysqlPool.query(sql, [id], (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results[0]);
+        return;
       }
+
+      resolve(results[0]);
     });
   });
 }
@@ -169,9 +172,10 @@ function updateCourseById(id, course) {
     mysqlPool.query(sql, queryValues, (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results.affectedRows > 0);
+        return;
       }
+
+      resolve(results.affectedRows > 0);
     });
   });
 }
@@ -194,9 +198,10 @@ function deleteCourseById(id) {
     mysqlPool.query(sql, [id], (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results.affectedRows > 0);
+        return;
       }
+
+      resolve(results.affectedRows > 0);
     });
   });
 }
@@ -216,9 +221,9 @@ function getCourseStudents(courseId) {
     mysqlPool.query(sql, [courseId], (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results);
       }
+
+      resolve(results);
     });
   });
 }
@@ -251,9 +256,10 @@ function addStudentToCourse(courseId, studentId) {
     mysqlPool.query(sql, [courseId, studentId], (err) => {
       if (err) {
         reject(err);
-      } else {
-        resolve();
+        return;
       }
+
+      resolve();
     });
   });
 }
@@ -272,9 +278,10 @@ function deleteStudentFromCourse(courseId, studentId) {
     mysqlPool.query(sql, [courseId, studentId], (err, results) => {
       if (err) {
         reject(err);
-      } else {
-        resolve(results.affectedRows > 0);
+        return;
       }
+
+      resolve(results.affectedRows > 0);
     });
   });
 }
