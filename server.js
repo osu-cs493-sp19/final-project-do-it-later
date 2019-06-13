@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const bodyParser = require('body-parser');
 
 const api = require('./api');
-
+const { connectToDB } = require('./lib/mongo');
 const app = express();
 const port = process.env.PORT || 8000;
 
@@ -45,7 +45,8 @@ app.use('*', (err, req, res, next) => {
   });
 });
 
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`== Server is running on port ${port}.`);
+connectToDB(async () => {
+  app.listen(port, () => {
+    console.log("== Tarpaulin is running on port", port);
+  });
 });

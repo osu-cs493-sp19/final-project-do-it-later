@@ -30,7 +30,10 @@ const {
 const {
   SubmissionSchema,
   getSubmissionById,
-  insertSubmission,
+  deleteSubmissionByAssignmentId,
+  getSubmissionsPage,
+  saveSubmissionFile,
+  insertNewSubmission,
   getDownloadStreamByFilename
 } = require('../models/submission');
 
@@ -247,7 +250,6 @@ router.delete('/:id', requireAuthentication, async (req, res) => {
       return;
     }
     // -- (2.2) Delete it in MongoDB database
-
   } catch (err) {
     console.error(err);
     res.status(500).send({
@@ -410,23 +412,37 @@ router.post('/:id/submissions', upload.single('file'), async (req, res, next) =>
     instructor_id: '3'
   }
 
-  // save both submission data and uploaded file to MongoDB
+  // save the actual file to Mongodb
+  try {
+    const file = {
+      path: req.file.path,
+      filename: req.file.filename,
+      contentType: req.file.mimetype
+    };
+    const inserted_file_id = await saveSubmissionFile(file);
+    console.log("== inserted_file_id:", inserted_file_id);
+    //await removeUploadedFile(req.file.path);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Error inserting submission FILE into DB.  Please try again later."
+    });
+    return;
+  }
+
+  // save submission data to MySQL
+
   try {
     console.log("== req.file:", req.file);
     console.log("== req.file.filename:", req.file.filename);
     const submission = {
-      // file metadata
-      path: req.file.path,
-      filename: req.file.filename,
-      contentType: req.file.mimetype,
-      // submission metadata
       assignment_id: req.body.assignment_id,
       student_id: req.body.student_id,
       timestamp: req.body.timestamp,
+      file: req.file.filename
     };
     console.log("== submission: ", submission);
-    const inserted_submission_id = await insertSubmission(submission);
-    await removeUploadedFile(req.file.path);
+    const inserted_submission_id = await insertNewSubmission(submission);
     res.status(201).send({
       id: inserted_submission_id,
       links: {
@@ -439,7 +455,7 @@ router.post('/:id/submissions', upload.single('file'), async (req, res, next) =>
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Error inserting submission into DB.  Please try again later."
+      error: "Error inserting submission INFO into DB.  Please try again later."
     });
     return;
   }
@@ -458,40 +474,25 @@ router.get('/:assignment_id/submissions/:submission_id',
   }
 
   // Does this submission even exist?
-  //const submission_id = parseInt(req.params.submission_id);
-  const submission_id = req.params.submission_id;
+  const submission_id = parseInt(req.params.submission_id);
   const submission = await getSubmissionById(submission_id);
   if (submission == undefined) {
     next();
   }
 
   // Is this user a 'student'?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'student') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not a student"
-  //   });
-  //   return;
-  // }
-  const user = {
-    id: '5',
-    name: 'Khuong Luu',
-    email: 'luukh@oregonstate.edu',
-    role: 'student'
-  };
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'student') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not a student"
+    });
+    return;
+  }
 
   // Is this student enrolled in the course that this assignment belongs to?
-  //const course = getCourseById(assignment.course_id);
+  const course = getCourseById(assignment.course_id);
   // TODO
   // Check if a student is enrolled in the course that owns this assignment
-  const course = {
-    id: '1',
-    subject: 'CS',
-    number: '493',
-    title: 'Cloud Application Development',
-    term: 'sp19',
-    instructor_id: '3'
-  }
 
   // Does this student own this assignment?
   if (submission.student_id != user.id) {
@@ -506,9 +507,9 @@ router.get('/:assignment_id/submissions/:submission_id',
       assignment_id: submission.assignment_id,
       student_id: submission.student_id,
       timestamp: submission.timestamp,
-      file: submission.filename, // filename
+      file: submission.file, // filename
       links: {
-        submission_file: `/assignments/${submission.assignment_id}/submissions/${submission.id}/file/${submission.filename}`,
+        submission_file: `/assignments/${submission.assignment_id}/submissions/${submission.id}/file/${submission.file}`,
         assignment: `/assignments/${submission.assignment_id}`,
         course: `/courses/${course.id}`
       }
@@ -524,7 +525,7 @@ router.get('/:assignment_id/submissions/:submission_id',
 
 // Get submission file by id
 router.get('/:assignment_id/submissions/:submission_id/file/:filename',
-            //requireAuthentication,
+            requireAuthentication,
             async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.assignment_id);
@@ -534,47 +535,30 @@ router.get('/:assignment_id/submissions/:submission_id/file/:filename',
   }
 
   // Does this submission even exist?
-  //const submission_id = parseInt(req.params.submission_id);
-  const submission_id = req.params.submission_id;
+  const submission_id = parseInt(req.params.submission_id);
   const submission = await getSubmissionById(submission_id);
   if (submission == undefined) {
     next();
   }
 
   // Is this user a 'student'?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'student') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not a student"
-  //   });
-  //   return;
-  // }
-  const user = {
-    id: '5',
-    name: 'Khuong Luu',
-    email: 'luukh@oregonstate.edu',
-    role: 'student'
-  };
-
-  // Is this student enrolled in the course that this assignment belongs to?
-  //const course = getCourseById(assignment.course_id);
-  // TODO
-  // Check if a student is enrolled in the course that owns this assignment
-  const course = {
-    id: '1',
-    subject: 'CS',
-    number: '493',
-    title: 'Cloud Application Development',
-    term: 'sp19',
-    instructor_id: '3'
+  const user = getUserById(req.authenticatedUserId);
+  if (user.role != 'student') {
+    res.status(403).send({
+      error: "Unauthorized to access the specified resource: You are not a student"
+    });
+    return;
   }
 
-  // Does this student own this submission?
-  if (submission.metadata.student_id != user.id) {
-    // console.log('== submission.student_id:', submission.metadata.student_id);
-    // console.log('== user.id:', user.id);
+  // Is this student enrolled in the course that this assignment belongs to?
+  const course = getCourseById(assignment.course_id);
+  // TODO
+  // Check if a student is enrolled in the course that owns this assignment
+
+  // Does this student own this assignment?
+  if (submission.student_id != user.id) {
     res.status(403).send({
-      error: "Unauthorized to access the specified resource. You don't own this submission"
+      error: "Unauthorized to access the specified resource. You don't own this assignment"
     });
     return;
   }
