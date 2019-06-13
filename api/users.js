@@ -1,21 +1,33 @@
 const router = require('express').Router();
 
 const { validateAgainstSchema } = require('../lib/validation');
-const { generateAuthToken, requireAuthentication, isAdmin } = require('../lib/auth');
-
-const { userSchema, insertNewUser, validateUser, getUserById, getUserByEmail, getInstructorCoursesById, getStudentCoursesById } = require('../models/user');
+const {
+  generateAuthToken,
+  requireAuthentication,
+  isAdmin
+} = require('../lib/auth');
+const {
+  UserSchema,
+  insertNewUser,
+  validateUser,
+  getUserById,
+  getUserByEmail,
+  getInstructorCoursesById,
+  getStudentCoursesById
+} = require('../models/user');
 
 router.post('/', async (req, res) => {
-  if (validateAgainstSchema(req.body, userSchema)) {
-    if (req.body.role == "admin"){
-      const status = await isAdmin(req)
-      if (status == false){
+  if (validateAgainstSchema(req.body, UserSchema)) {
+    if (req.body.role === 'admin' || req.body.role === 'instructor') {
+      const status = await isAdmin(req);
+      if (status === false) {
         res.status(401).send({
-          error: "Invalid authentication token provided."
+          error: 'Only admins can create new admins and instructors.'
         });
         return;
       }
     }
+
     try {
       const id = await insertNewUser(req.body);
       res.status(201).send({
@@ -23,15 +35,21 @@ router.post('/', async (req, res) => {
       });
     } catch (err) {
       console.error(err);
-      res.status(500).send({
-        error: "Error inserting user into DB.  Please try again later."
-      });
+      if (err && err.code === 'ER_DUP_ENTRY') {
+        res.status(400).send({
+          error: 'Email already exists.'
+        });
+      } else {
+        res.status(500).send({
+          error: 'Error inserting user into DB. Please try again later.'
+        });
+      }
     }
   } else {
     res.status(400).send({
-      error: "Request body is not a valid user object"
+      error: 'Request body is not a valid User object.'
     });
-  }    
+  }
 });
 
 router.post('/login', async (req, res) => {
@@ -46,52 +64,60 @@ router.post('/login', async (req, res) => {
         });
       } else {
         res.status(401).send({
-          error: "Invalid credentials"
+          error: 'The provided credentials were invalid.'
         });
       }
     } catch (err) {
       res.status(500).send({
-        error: "Error validating user.  Try again later."
+        error: 'Error validating user. Please try again later.'
       });
     }
   } else {
     res.status(400).send({
-      error: "Request body was invalid"
+      error: 'Please provide an email and a password.'
     });
   }
 });
 
 /*
-  * Route to list all of a user's info excluding password
-  */
+ * Route to list all of a user's info excluding password
+ */
 router.get('/:id', requireAuthentication, async (req, res, next) => {
-  const reqUser = await getUserById(req.authenticatedUserId)
-  if (req.params.id == req.authenticatedUserId || reqUser.role == "admin") {
-    try {
-      var user = await getUserById(parseInt(req.params.id));
-      if (user) {
-        delete user.password
-        if (user.role == "instructor"){
-          const instructorCourseIds = await getInstructorCoursesById(parseInt(req.params.id));
-          user.courses = instructorCourseIds;
+  const id = parseInt(req.params.id);
+
+  try {
+    // name these two objects differently to avoid confusion
+    const requestedUser = await getUserById(id);
+
+    // check existence of the requested user before checking authorization
+    if (requestedUser) {
+      const currentUser = await getUserById(req.authenticatedUserId);
+
+      // admins can see everything. Current logged in user can only see data
+      // of themselves
+      if (id === req.authenticatedUserId || currentUser.role === 'admin') {
+        if (requestedUser.role === 'instructor') {
+          // instructors can see the courses they teach
+          const instructorCourseIds = await getInstructorCoursesById(id);
+          requestedUser.courses = instructorCourseIds;
+        } else if (requestedUser.role === 'student') {
+          // students can see the courses they enroll in
+          const studentCourseIds = await getStudentCoursesById(id);
+          requestedUser.courses = studentCourseIds;
         }
-        else if (user.role == "student"){
-          const studentCourseIds = await getStudentCoursesById(parseInt(req.params.id));
-          user.courses = studentCourseIds
-        }
-        res.status(200).send({ user });
+        res.status(200).send(requestedUser);
       } else {
-        next();
+        res.status(403).send({
+          error: 'Unauthorized to access the specified resource.'
+        });
       }
-    } catch (err) {
-      console.error(err);
-      res.status(500).send({
-        error: "Unable to fetch users.  Please try again later."
-      });
+    } else {
+      next();
     }
-  } else {
-    res.status(403).send({
-      error: "Unauthorized to access the specified resource"
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to fetch users. Please try again later.'
     });
   }
 });
