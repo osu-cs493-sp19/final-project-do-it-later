@@ -17,7 +17,7 @@ async function getAllSubmissions() {
   const db = getDBReference();
   const bucket = new GridFSBucket(db, { bucketName: 'files' });
   const results = await bucket.find({}).toArray();;
-  console.log('====== getAllSubmissions: results: ', results);
+  //console.log('====== getAllSubmissions: results: ', results);
   return {
     submissions: results
   };
@@ -36,7 +36,7 @@ async function getSubmissionsPage(page) {
   //console.log('====== getSubmissionsPage: bucket: ', bucket);
   //const count = await bucket.countDocuments();
   const count = await bucket.find({}).count();
-  console.log('====== getSubmissionsPage: count: ', count);
+  //console.log('====== getSubmissionsPage: count: ', count);
 
   /*
    * Compute last page number and make sure page is within allowed bounds.
@@ -48,9 +48,9 @@ async function getSubmissionsPage(page) {
   page = page < 1 ? 1 : page;
   const offset = (page - 1) * pageSize;
 
-  console.log('====== getSubmissionsPage: lastPage: ', lastPage);
-  console.log('====== getSubmissionsPage: page: ', page);
-  console.log('====== getSubmissionsPage: offset: ', offset);
+  // console.log('====== getSubmissionsPage: lastPage: ', lastPage);
+  // console.log('====== getSubmissionsPage: page: ', page);
+  // console.log('====== getSubmissionsPage: offset: ', offset);
 
   const results = await bucket.find({})
     .sort({ _id: 1 })
@@ -130,7 +130,7 @@ async function getSubmissionByAssignmentId(assignment_id) {
   const results = await bucket
     .find({ "metadata.assignment_id": assignment_id })
     .toArray();
-  return results[0];
+  return results;
 }
 
 async function deleteSubmissionByAssignmentId(assignment_id) {
