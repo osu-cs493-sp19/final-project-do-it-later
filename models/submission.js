@@ -13,24 +13,46 @@ const SubmissionSchema = {
 }
 exports.SubmissionSchema = SubmissionSchema;
 
+async function getAllSubmissions() {
+  const db = getDBReference();
+  const bucket = new GridFSBucket(db, { bucketName: 'files' });
+  const results = await bucket.find({}).toArray();;
+  console.log('====== getAllSubmissions: results: ', results);
+  return {
+    submissions: results
+  };
+}
+exports.getAllSubmissions = getAllSubmissions;
 
+function countSubmissions() {
+  return Promise
+}
 
 async function getSubmissionsPage(page) {
+  //console.log('====== getSubmissionsPage: input page: ', page);
   const db = getDBReference();
-  const collection = db.collection('files');
-  const count = await collection.countDocuments();
+
+  const bucket = new GridFSBucket(db, { bucketName: 'files' });
+  //console.log('====== getSubmissionsPage: bucket: ', bucket);
+  //const count = await bucket.countDocuments();
+  const count = await bucket.find({}).count();
+  console.log('====== getSubmissionsPage: count: ', count);
 
   /*
    * Compute last page number and make sure page is within allowed bounds.
    * Compute offset into collection.
    */
-  const pageSize = 10;
+  const pageSize = 3;
   const lastPage = Math.ceil(count / pageSize);
   page = page > lastPage ? lastPage : page;
   page = page < 1 ? 1 : page;
   const offset = (page - 1) * pageSize;
 
-  const results = await collection.find({})
+  console.log('====== getSubmissionsPage: lastPage: ', lastPage);
+  console.log('====== getSubmissionsPage: page: ', page);
+  console.log('====== getSubmissionsPage: offset: ', offset);
+
+  const results = await bucket.find({})
     .sort({ _id: 1 })
     .skip(offset)
     .limit(pageSize)

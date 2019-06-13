@@ -272,7 +272,8 @@ router.delete('/:id', requireAuthentication, async (req, res) => {
  *    whose ID matches the instructor_id of the Course corresponding
  *    to the Assignment's courseId can fetch the Submissions for an Assignment.
  */
-router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
+router.get('/:id/submissions', async (req, res, next) => {
+//router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
   const assignment = await getAssignmentById(assignment_id);
@@ -281,22 +282,22 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
   }
 
   // Does this user has 'admin' or 'instructor' role?
-  const user = getUserById(req.authenticatedUserId);
-  if (user.role != 'admin' && user.role != 'instructor') {
-    res.status(403).send({
-      error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
-    });
-    return;
-  }
+  // const user = getUserById(req.authenticatedUserId);
+  // if (user.role != 'admin' && user.role != 'instructor') {
+  //   res.status(403).send({
+  //     error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
+  //   });
+  //   return;
+  // }
 
   // Does this user'id match the `instructor_id` of the Course that owns this assignment?
-  const course = await getCourseById(assignment.course_id);
-  if (user.id != course.instructor_id) {
-    res.status(403).send({
-      error: "Unauthorized to access the specified resource: You are not instructor of this course"
-    });
-    return;
-  }
+  // const course = await getCourseById(assignment.course_id);
+  // if (user.id != course.instructor_id) {
+  //   res.status(403).send({
+  //     error: "Unauthorized to access the specified resource: You are not instructor of this course"
+  //   });
+  //   return;
+  // }
 
   try {
     /*
