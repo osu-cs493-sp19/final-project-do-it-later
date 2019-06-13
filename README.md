@@ -11,9 +11,9 @@
 ### Reccomended way
 
 Use `compose.sh` script file in the root directory of this project
-```
-./compose.sh
-```
+
+    ./compose.sh
+
 Use `sudo chmod +x ./compose.sh` if permission to execute the script is denied
 
 ### Troubleshooting
@@ -42,6 +42,6 @@ Creates containers that aren't created yet, starts them if they have been create
 
     docker-compose down -v && docker-compose build && docker-compose up
 
-**Desperate fix:** (don't do this if you have other Docker projects running): Quits all Docker processes, deletes all containers and images, and starts from a clean slate
+**Desperate fix:** (don't do this if you have other Docker projects running) Quits all Docker processes, deletes all containers and images, and starts from a clean slate
 
     docker kill $(docker ps -q); docker system prune -af; docker-compose up
