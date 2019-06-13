@@ -133,4 +133,31 @@ CREATE TABLE `submissions` (
   FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+--
+-- Table structure for table `courses_students`
+-- (Since Course and Student have a many-to-many relationship)
+--
+DROP TABLE IF EXISTS `courses_students`;
+CREATE TABLE `courses_students` (
+  `course_id` INT(10) UNSIGNED NOT NULL,
+  `student_id` INT(10) UNSIGNED NOT NULL,
+  UNIQUE (`course_id`, `student_id`),
+  FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `courses_students`
+--
+INSERT INTO `courses_students`
+  (`course_id`, `student_id`)
+VALUES
+  (1, 2), (1, 5), (1, 6),
+  (3, 1), (3, 7),
+  (4, 5), (4, 8), (4, 9),
+  (7, 2), (7, 5), (7, 6), (7, 7), (7, 8),
+  (9, 2), (9, 6), (9, 7),(9, 8),
+  (17, 5), (17, 6),
+  (19, 12);
+
 SET FOREIGN_KEY_CHECKS = 1;
