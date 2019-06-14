@@ -19,6 +19,8 @@ services:
       MONGO_PORT: ${MONGO_PORT}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT}
+      MAX_REQUESTS_PER_TIME_WINDOW: ${MAX_REQUESTS_PER_TIME_WINDOW}
+      TIME_WINDOW_MILLISEC: ${TIME_WINDOW_MILLISEC}
     depends_on:
       - mysql
       - mongodb
