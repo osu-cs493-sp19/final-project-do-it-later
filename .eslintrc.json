@@ -9,7 +9,6 @@
     "sourceType": "module"
   },
   "rules": {
-    "arrow-parens": ["error", "as-needed"],
     "indent": ["error", 2],
     "linebreak-style": ["error", "unix"],
     "max-len": ["warn"],
