@@ -104,6 +104,7 @@ router.post('/', requireAuthentication, async (req, res) => {
         error: 'Some fields in the request body exceed the limits.'
       });
     } else {
+      console.error(err);
       res.status(500).send({
         error: 'Unable to insert the Course. Please try again later.'
       });
