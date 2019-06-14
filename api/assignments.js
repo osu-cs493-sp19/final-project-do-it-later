@@ -20,33 +20,13 @@ const {
 } = require('../models/assignment');
 
 const {
-  UserSchema,
-  insertNewUser,
-  validateUser,
-  getUserById,
-  getUserByEmail,
-  getInstructorCoursesById,
-  getStudentCoursesById
-} = require('../models/user');
-
-const {
-  CourseSchema,
-  getCoursePage,
-  addCourse,
   getCourseById,
-  updateCourseById,
-  deleteCourseById,
   getCourseStudentIds,
-  validateEnrollmentUpdateBody,
-  updateCourseEnrollment,
-  getCourseRoster,
-  getCourseAssignmentIds
 } = require('../models/course');
 
 const {
   SubmissionSchema,
   getSubmissionsPage,
-  getAllSubmissions,
   getSubmissionById,
   insertSubmission,
   getDownloadStreamByFilename,
@@ -96,20 +76,20 @@ router.post('/', requireAuthentication, async (req, res) => {
     return;
   }
 
-  // Does this user has 'admin' or 'instructor' role?
-  const user = await getUserById(req.authenticatedUserId);
-  if (user.role != 'admin' && user.role != 'instructor') {
-    res.status(403).send({
-      error: "Unauthorized to access the specified resource (not admin nor instructor)"
-    });
+  // Does this course exist?
+  const course = await getCourseById(parseInt(req.body.course_id));
+  if (!course) {
+    next();
     return;
   }
 
-  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
-  const course = await getCourseById(req.body.course_id);
-  if (user.id != course.instructor_id) {
+  // only admins and instructor of the Course can proceed
+  const authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  if (!authorized) {
     res.status(403).send({
-      error: "Unauthorized to access the specified resource (you don't own this course)"
+      error: 'Only admins and instructor of the Course can update the Course.'
     });
     return;
   }
@@ -161,20 +141,20 @@ router.patch('/:id', requireAuthentication, async (req, res) => {
     return;
   }
 
-  // Does this user has 'admin' or 'instructor' role?
-  const user = await getUserById(req.authenticatedUserId);
-  if (user.role != 'admin' && user.role != 'instructor') {
-    res.status(403).send({
-      error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
-    });
+  // Does this course exist?
+  const course = await getCourseById(parseInt(req.body.course_id));
+  if (!course) {
+    next();
     return;
   }
 
-  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
-  const course = await getCourseById(assignment.course_id);
-  if (user.id != course.instructor_id) {
+  // only admins and instructor of the Course can proceed
+  const authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  if (!authorized) {
     res.status(403).send({
-      error: "Unauthorized to access the specified resource: You are not instructor of this course"
+      error: 'Only admins and instructor of the Course can update the Course.'
     });
     return;
   }
@@ -212,29 +192,25 @@ router.delete('/:id', requireAuthentication, async (req, res) => {
     next();
   }
 
-  // Does this user has 'admin' or 'instructor' role?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'admin' && user.role != 'instructor') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
-  //   });
-  //   return;
-  // }
+  // Does this course exist?
+  const course = await getCourseById(parseInt(assignment.course_id));
+  if (!course) {
+    next();
+    return;
+  }
 
-  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
-  // const course = await getCourseById(assignment.course_id);
-  // if (user.id != course.instructor_id) {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not instructor of this course"
-  //   });
-  //   return;
-  // }
+  // only admins and instructor of the Course can proceed
+  const authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  if (!authorized) {
+    res.status(403).send({
+      error: 'You are not authorized to delete this resource.'
+    });
+    return;
+  }
 
   // (1) Remove this assignment from db
-  let deleteAssignmentSuccessful = undefined;
-  let deleteSubmissionSuccessful = undefined;
-  //let deleteSubmissionFileSuccessful = undefined;
-
   try {
     deleteAssignmentSuccessful = await deleteAssignmentById(assignment_id);
     if (!deleteAssignmentSuccessful) {
@@ -255,7 +231,6 @@ router.delete('/:id', requireAuthentication, async (req, res) => {
   // (2) Remove all connected submissions from db
   try {
     await deleteSubmissionByAssignmentId(assignment_id);
-    deleteSubmissionSuccessful = true;
   } catch (err) {
     console.error(err);
     res.status(500).send({
@@ -286,23 +261,23 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
     next();
   }
 
-  // Does this user has 'admin' or 'instructor' role?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'admin' && user.role != 'instructor') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are neither admin nor instructor"
-  //   });
-  //   return;
-  // }
+  // Does this course exist?
+  const course = await getCourseById(parseInt(assignment.course_id));
+  if (!course) {
+    next();
+    return;
+  }
 
-  // Does this user'id match the `instructor_id` of the Course that owns this assignment?
-  // const course = await getCourseById(assignment.course_id);
-  // if (user.id != course.instructor_id) {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not instructor of this course"
-  //   });
-  //   return;
-  // }
+  // only admins and instructor of the Course can proceed
+  const authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  if (!authorized) {
+    res.status(403).send({
+      error: 'You are not authorized to access this resource.'
+    });
+    return;
+  }
 
   try {
     /*
@@ -310,9 +285,9 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
      * send response.
      */
 
-    console.log('== parseInt(req.query.page):', parseInt(req.query.page));
+    //console.log('== parseInt(req.query.page):', parseInt(req.query.page));
     const submissionPage = await getSubmissionsPage(parseInt(req.query.page) || 1);
-    console.log('== submissionPage:', submissionPage);
+    //console.log('== submissionPage:', submissionPage);
 
     submissionPage.links = {};
     if (submissionPage.page < submissionPage.totalPages) {
@@ -379,8 +354,8 @@ function removeUploadedFile(file_path) {
  *      that we have been using for Users, Courses, and Assignments
  */
 router.post('/:id/submissions', requireAuthentication, upload.single('file'), async (req, res, next) => {
-  console.log("== req.file:", req.file);
-  console.log("== req.body:", req.body);
+  // console.log("== req.file:", req.file);
+  // console.log("== req.body:", req.body);
 
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
@@ -397,39 +372,30 @@ router.post('/:id/submissions', requireAuthentication, upload.single('file'), as
     return;
   }
 
-  // for mocking unimplemented User API
-  // Is this user a 'student'?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'student') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not a student"
-  //   });
-  //   return;
-  // }
-  const user = {
-    id: '5',
-    name: 'Khuong Luu',
-    email: 'luukh@oregonstate.edu',
-    role: 'student'
-  };
+  // Does this course exist?
+  const course = await getCourseById(parseInt(assignment.course_id));
+  if (!course) {
+    next();
+    return;
+  }
 
-  // Is this student enrolled in the course that this assignment belongs to?
-  //const course = getCourseById(assignment.course_id);
-  // TODO
-  // Check if a student is enrolled in the course that owns this assignment
-  const course = {
-    id: '1',
-    subject: 'CS',
-    number: '493',
-    title: 'Cloud Application Development',
-    term: 'sp19',
-    instructor_id: '3'
+  // Fetch a list of student ids who are enrolled in this course
+  const studentIds = await getCourseStudentIds(parseInt(course.id));
+
+  // only enrolled students of the Course can proceed
+  const authorized = req.authenticatedUserRole === 'student' && // is a student
+                      studentIds.includes(req.authenticatedUserId); // enrolled in this course
+  if (!authorized) {
+    res.status(403).send({
+      error: 'You are not authorized to create this resource.'
+    });
+    return;
   }
 
   // save both submission data and uploaded file to MongoDB
   try {
-    console.log("== req.file:", req.file);
-    console.log("== req.file.filename:", req.file.filename);
+    //console.log("== req.file:", req.file);
+    //console.log("== req.file.filename:", req.file.filename);
     const submission = {
       // file metadata
       path: req.file.path,
@@ -440,7 +406,7 @@ router.post('/:id/submissions', requireAuthentication, upload.single('file'), as
       student_id: req.body.student_id,
       timestamp: req.body.timestamp,
     };
-    console.log("== submission: ", submission);
+    //console.log("== submission: ", submission);
     const inserted_submission_id = await insertSubmission(submission);
     await removeUploadedFile(req.file.path);
     res.status(201).send({
@@ -462,7 +428,7 @@ router.post('/:id/submissions', requireAuthentication, upload.single('file'), as
 
 });
 
-// Get submission by id
+// Get a submission detail by id
 router.get('/:assignment_id/submissions/:submission_id', requireAuthentication, async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.assignment_id);
@@ -479,38 +445,28 @@ router.get('/:assignment_id/submissions/:submission_id', requireAuthentication, 
     next();
   }
 
-  // Is this user a 'student'?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'student') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not a student"
-  //   });
-  //   return;
-  // }
-  const user = {
-    id: '5',
-    name: 'Khuong Luu',
-    email: 'luukh@oregonstate.edu',
-    role: 'student'
-  };
-
-  // Is this student enrolled in the course that this assignment belongs to?
-  //const course = getCourseById(assignment.course_id);
-  // TODO
-  // Check if a student is enrolled in the course that owns this assignment
-  const course = {
-    id: '1',
-    subject: 'CS',
-    number: '493',
-    title: 'Cloud Application Development',
-    term: 'sp19',
-    instructor_id: '3'
+  // Does this course exist?
+  const course = await getCourseById(parseInt(assignment.course_id));
+  if (!course) {
+    next();
+    return;
   }
 
-  // Does this student own this assignment?
-  if (submission.metadata.student_id != user.id) {
+  const authorized = false;
+  if (req.authenticatedUserRole === 'student') {
+    // Fetch a list of student ids who are enrolled in this course
+    const studentIds = await getCourseStudentIds(parseInt(course.id));
+    authorized = studentIds.includes(req.authenticatedUserId) && // is enrolled in this course
+                  submission.metadata.student_id == req.authenticatedUserId; // owns this submission
+  } else {
+    authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  }
+
+  if (!authorized) {
     res.status(403).send({
-      error: "Unauthorized to access the specified resource. You don't own this assignment"
+      error: 'You are not authorized to access this resource.'
     });
     return;
   }
@@ -555,40 +511,28 @@ router.get('/:assignment_id/submissions/:submission_id/file/:filename',
     next();
   }
 
-  // Is this user a 'student'?
-  // const user = getUserById(req.authenticatedUserId);
-  // if (user.role != 'student') {
-  //   res.status(403).send({
-  //     error: "Unauthorized to access the specified resource: You are not a student"
-  //   });
-  //   return;
-  // }
-  const user = {
-    id: '5',
-    name: 'Khuong Luu',
-    email: 'luukh@oregonstate.edu',
-    role: 'student'
-  };
-
-  // Is this student enrolled in the course that this assignment belongs to?
-  //const course = getCourseById(assignment.course_id);
-  // TODO
-  // Check if a student is enrolled in the course that owns this assignment
-  const course = {
-    id: '1',
-    subject: 'CS',
-    number: '493',
-    title: 'Cloud Application Development',
-    term: 'sp19',
-    instructor_id: '3'
+  // Does this course exist?
+  const course = await getCourseById(parseInt(assignment.course_id));
+  if (!course) {
+    next();
+    return;
   }
 
-  // Does this student own this submission?
-  if (submission.metadata.student_id != user.id) {
-    // console.log('== submission.student_id:', submission.metadata.student_id);
-    // console.log('== user.id:', user.id);
+  const authorized = false;
+  if (req.authenticatedUserRole === 'student') {
+    // Fetch a list of student ids who are enrolled in this course
+    const studentIds = await getCourseStudentIds(parseInt(course.id));
+    authorized = studentIds.includes(req.authenticatedUserId) && // is enrolled in this course
+                  submission.metadata.student_id == req.authenticatedUserId; // owns this submission
+  } else {
+    authorized = req.authenticatedUserRole === 'admin' ||
+                    (req.authenticatedUserRole === 'instructor' &&
+                    req.authenticatedUserId === course.instructor_id);
+  }
+
+  if (!authorized) {
     res.status(403).send({
-      error: "Unauthorized to access the specified resource. You don't own this submission"
+      error: 'You are not authorized to access this resource.'
     });
     return;
   }

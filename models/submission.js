@@ -1,10 +1,6 @@
-
-
-
 const fs = require('fs');
 const { ObjectId, GridFSBucket } = require('mongodb');
 const { getDBReference } = require('../lib/mongo');
-const { extractValidFields } = require('../lib/validation');
 
 const SubmissionSchema = {
   assignment_id: { required: true },
@@ -34,7 +30,6 @@ async function getSubmissionsPage(page) {
 
   const bucket = new GridFSBucket(db, { bucketName: 'files' });
   //console.log('====== getSubmissionsPage: bucket: ', bucket);
-  //const count = await bucket.countDocuments();
   const count = await bucket.find({}).count();
   //console.log('====== getSubmissionsPage: count: ', count);
 
@@ -42,7 +37,6 @@ async function getSubmissionsPage(page) {
    * Compute last page number and make sure page is within allowed bounds.
    * Compute offset into collection.
    */
-  //const pageSize = 3;
   const pageSize = parseInt(process.env.PAGINATION_PAGE_SIZE) || 3;
   const lastPage = Math.ceil(count / pageSize);
   page = page > lastPage ? lastPage : page;
@@ -136,8 +130,8 @@ async function getSubmissionByAssignmentId(assignment_id) {
 
 async function deleteSubmissionByAssignmentId(assignment_id) {
   submissions = await getSubmissionByAssignmentId(assignment_id);
-  console.log('== deleting the following submissions: ');
-  console.log('== ', submissions);
+  //console.log('== deleting the following submissions: ');
+  //console.log('== ', submissions);
   submissions.forEach(a_submission => {
     console.log('== deleting a_submission._id:', a_submission._id);
     bucket.delete(a_submission._id, (error) => {
