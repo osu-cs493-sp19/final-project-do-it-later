@@ -66,7 +66,6 @@ router.get('/:id', async (req, res, next) => {
     whose ID matches the instructor_id of the Course corresponding to the Assignment's courseId
     can create an Assignment.
  */
-//router.post('/', async (req, res) => {
 router.post('/', requireAuthentication, async (req, res) => {
   // Does this POST request had valid body
   if (!validateAgainstSchema(req.body, AssignmentSchema)) {
@@ -142,7 +141,7 @@ router.patch('/:id', requireAuthentication, async (req, res) => {
   }
 
   // Does this course exist?
-  const course = await getCourseById(parseInt(req.body.course_id));
+  const course = await getCourseById(parseInt(assignment.course_id));
   if (!course) {
     next();
     return;
