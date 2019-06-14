@@ -21,7 +21,10 @@ app.use(express.static('public'));
 /*
  * Limit number of requests per minutes based on IP address and Timestamp
  */
-app.use(rateLimit);
+const limit_requests_rate = parseInt(process.env.LIMIT_REQUEST_RATE) && 1;
+if (limit_requests_rate) {
+  app.use(rateLimit);
+}
 
 /*
  * All routes for the API are written in modules in the api/ directory.  The
