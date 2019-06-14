@@ -287,9 +287,11 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
     const currentPage = parseInt(req.query.page) || 1;
     const student_id = parseInt(req.query.student_id) || 0;
 
-    //console.log('== currentPage:', currentPage);
+    console.log('== currentPage:', currentPage);
+    console.log('== assignment_id:', assignment_id);
+    console.log('== student_id:', student_id);
     const submissionPage = await getSubmissionsPage(assignment_id, currentPage, student_id);
-    // console.log('== submissionPage:', submissionPage);
+    console.log('== submissionPage:', submissionPage);
 
     submissionPage.links = {};
     const studentIdQuery = student_id > 0 ? `&student_id=${student_id}` : '';

@@ -9,6 +9,7 @@ const SubmissionSchema = {
 }
 exports.SubmissionSchema = SubmissionSchema;
 
+// for debugging only
 async function getAllSubmissions() {
   const db = getDBReference();
   const bucket = new GridFSBucket(db, { bucketName: 'files' });
@@ -37,13 +38,14 @@ exports.getAllSubmissions = getAllSubmissions;
 async function getSubmissionsPage(assignment_id, page, student_id) {
   const db = getDBReference();
   const bucket = new GridFSBucket(db, { bucketName: 'files' });
-  //console.log('====== getSubmissionsPage: bucket: ', bucket);
 
   // filter Assignment's student ID if it is provided
-  const filter = { 'metadata.assignment_id': assignment_id };
+  const filter = { 'metadata.assignment_id': assignment_id.toString() };
+  //console.log('== getSubmissionsPage: student_id:', student_id);
   if (student_id > 0) {
     filter['metadata.student_id'] = student_id;
   }
+  ///console.log('== getSubmissionsPage: filter:', filter);
 
   // apply filter and fetch submissions from GridFS
   let results = await bucket
@@ -52,6 +54,8 @@ async function getSubmissionsPage(assignment_id, page, student_id) {
     .toArray();
 
   const count = results.length;
+  //console.log('== getSubmissionsPage: results:', results);
+  //console.log('== getSubmissionsPage: count:', count);
   //console.log('====== getSubmissionsPage: count: ', count);
 
   // Compute last page number and make sure page is within allowed bounds.
@@ -61,13 +65,13 @@ async function getSubmissionsPage(assignment_id, page, student_id) {
   page = page > lastPage ? lastPage : page;
   page = page < 1 ? 1 : page;
   const offset = (page - 1) * pageSize;
-  // console.log('====== getSubmissionsPage: lastPage: ', lastPage);
-  // console.log('====== getSubmissionsPage: page: ', page);
-  // console.log('====== getSubmissionsPage: offset: ', offset);
+  //console.log('====== getSubmissionsPage: lastPage: ', lastPage);
+  //console.log('====== getSubmissionsPage: page: ', page);
+  //console.log('====== getSubmissionsPage: offset: ', offset);
 
   // paginate results
   results = results.slice(offset, offset + pageSize);
-
+  //console.log('== getSubmissionsPage: results AFTER PAGING:', results);
   return {
     submissions: results,
     page: page,
