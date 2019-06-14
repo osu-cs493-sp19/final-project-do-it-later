@@ -20,38 +20,53 @@ async function getAllSubmissions() {
 }
 exports.getAllSubmissions = getAllSubmissions;
 
-function countSubmissions() {
-  return Promise
-}
 
-async function getSubmissionsPage(page) {
-  //console.log('====== getSubmissionsPage: input page: ', page);
+/*
+ * Fetches a paginated list of all Submissions to this Assignments.
+ *
+ * Params:
+ *   assignment_id  Fetch only Submissions to a specified Assignment ID
+ *   page           Page of Submissions to fetch. Default to 1 if not specified.
+ *   student_id     Fetch only Submisions to this Assignments of a specified
+ *                  student ID
+ *
+ * Returns a Promise that
+ * - resolves to an object that contains info of a page of Submissions, or
+ * - rejects with an error on failure.
+ */
+async function getSubmissionsPage(assignment_id, page, student_id) {
   const db = getDBReference();
-
   const bucket = new GridFSBucket(db, { bucketName: 'files' });
   //console.log('====== getSubmissionsPage: bucket: ', bucket);
-  const count = await bucket.find({}).count();
+
+  // filter Assignment's student ID if it is provided
+  const filter = { 'metadata.assignment_id': assignment_id };
+  if (student_id > 0) {
+    filter['metadata.student_id'] = student_id;
+  }
+
+  // apply filter and fetch submissions from GridFS
+  let results = await bucket
+    .find(filter)
+    .sort({ _id: 1 })
+    .toArray();
+
+  const count = results.length;
   //console.log('====== getSubmissionsPage: count: ', count);
 
-  /*
-   * Compute last page number and make sure page is within allowed bounds.
-   * Compute offset into collection.
-   */
+  // Compute last page number and make sure page is within allowed bounds.
+  // Compute offset into collection.
   const pageSize = parseInt(process.env.PAGINATION_PAGE_SIZE) || 3;
   const lastPage = Math.ceil(count / pageSize);
   page = page > lastPage ? lastPage : page;
   page = page < 1 ? 1 : page;
   const offset = (page - 1) * pageSize;
-
   // console.log('====== getSubmissionsPage: lastPage: ', lastPage);
   // console.log('====== getSubmissionsPage: page: ', page);
   // console.log('====== getSubmissionsPage: offset: ', offset);
 
-  const results = await bucket.find({})
-    .sort({ _id: 1 })
-    .skip(offset)
-    .limit(pageSize)
-    .toArray();
+  // paginate results
+  results = results.slice(offset, offset + pageSize);
 
   return {
     submissions: results,

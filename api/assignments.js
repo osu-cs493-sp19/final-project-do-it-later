@@ -258,6 +258,7 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
   const assignment = await getAssignmentById(assignment_id);
   if (assignment == undefined) {
     next();
+    return;
   }
 
   // Does this course exist?
@@ -283,19 +284,30 @@ router.get('/:id/submissions', requireAuthentication, async (req, res, next) => 
      * Fetch page info, generate HATEOAS links for surrounding pages and then
      * send response.
      */
+    const currentPage = parseInt(req.query.page) || 1;
+    const student_id = parseInt(req.query.student_id) || 0;
 
-    //console.log('== parseInt(req.query.page):', parseInt(req.query.page));
-    const submissionPage = await getSubmissionsPage(parseInt(req.query.page) || 1);
-    //console.log('== submissionPage:', submissionPage);
+    //console.log('== currentPage:', currentPage);
+    const submissionPage = await getSubmissionsPage(assignment_id, currentPage, student_id);
+    // console.log('== submissionPage:', submissionPage);
 
     submissionPage.links = {};
+    const studentIdQuery = student_id > 0 ? `&student_id=${student_id}` : '';
     if (submissionPage.page < submissionPage.totalPages) {
-      submissionPage.links.nextPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.page + 1}`;
-      submissionPage.links.lastPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.totalPages}`;
+      submissionPage.links.nextPage =
+        `/assignments/${assignment_id}/submissions?page=${submissionPage.page + 1}` +
+        studentIdQuery;
+      submissionPage.links.lastPage =
+        `/assignments/${assignment_id}/submissions?page=${submissionPage.totalPages}` +
+        studentIdQuery;
     }
     if (submissionPage.page > 1) {
-      submissionPage.links.prevPage = `/assignments/${assignment_id}/submissions?page=${submissionPage.page - 1}`;
-      submissionPage.links.firstPage = `/assignments/${assignment_id}/submissions?page=1`;
+      submissionPage.links.prevPage =
+        `/assignments/${assignment_id}/submissions?page=${submissionPage.page - 1}` +
+        studentIdQuery;
+      submissionPage.links.firstPage =
+        `/assignments/${assignment_id}/submissions?page=1` +
+        studentIdQuery;
     }
     res.status(200).send(submissionPage);
 
