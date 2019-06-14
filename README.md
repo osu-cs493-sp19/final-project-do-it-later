@@ -10,27 +10,29 @@
 1. Clone this repository
 2. Create a file named `.env` with the following environment variables (fill in the value yourself):
 ```
-MYSQL_DATABASE
-MYSQL_USER
-MYSQL_PASSWORD
-MONGO_DATABASE
-MONGO_ROOT_USER
-MONGO_ROOT_PASSWORD
-MONGO_USER
-MONGO_PASSWORD
-MAX_REQUESTS_PER_TIME_WINDOW
-TIME_WINDOW_MILLISEC
-PAGINATION_PAGE_SIZE
-LIMIT_REQUEST_RATE
+  MYSQL_DATABASE
+  MYSQL_USER
+  MYSQL_PASSWORD
+  MONGO_DATABASE
+  MONGO_ROOT_USER
+  MONGO_ROOT_PASSWORD
+  MONGO_USER
+  MONGO_PASSWORD
+  MAX_REQUESTS_PER_TIME_WINDOW
+  TIME_WINDOW_MILLISEC
+  PAGINATION_PAGE_SIZE
+  LIMIT_REQUEST_RATE
+  JWT_SECRET_KEY
 ```
 - `MAX_REQUESTS_PER_TIME_WINDOW`, `TIME_WINDOW_MILLISEC`, `LIMIT_REQUEST_RATE` are used to config rate limiting feature, defining how many request per time window and how long is the time window, and if this feature is to be enabled or not,  respectively.
 - `PAGINATION_PAGE_SIZE` configures how many return items per page for requests that needs pagination
+- `JWT_SECRET_KEY` is your secret key for JWT
 
 3. Run `./compose.sh`
 
 ## Docker Commands HOWTOs
 
-### Reccomended way
+### Recommended way
 
 Use `compose.sh` script file in the root directory of this project
 
