@@ -379,3 +379,24 @@ function getCourseRoster(courseId) {
   });
 }
 exports.getCourseRoster = getCourseRoster;
+
+/*
+ * Fetches a list of IDs of Assignments for the Course.
+ *
+ * Returns a Promise that
+ * - resolves to a list that contains the IDs of all Assignments for the Course.
+ * - rejects with an error on failure.
+ */
+function getCourseAssignmentIds(courseId) {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT id FROM assignments WHERE course_id = ?';
+    mysqlPool.query(sql, [courseId], (err, results) => {
+      if (err) {
+        reject(err);
+      }
+
+      resolve(results);
+    });
+  });
+}
+exports.getCourseAssignmentIds = getCourseAssignmentIds;

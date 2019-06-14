@@ -20,7 +20,8 @@ const {
   getCourseStudentIds,
   validateEnrollmentUpdateBody,
   updateCourseEnrollment,
-  getCourseRoster
+  getCourseRoster,
+  getCourseAssignmentIds
 } = require('../models/course');
 
 /*
@@ -185,17 +186,15 @@ router.delete('/:id', async (req, res, next) => {
  * Only an authenticated admin or an instructor who teaches this Course can
  * fetch the student list.
  */
-router.get('/:id/students', async (req, res, next) => {
+router.get('/:id/students', async (req, res) => {
   try {
     const studentIds = await getCourseStudentIds(parseInt(req.params.id));
-    if (!Array.isArray(studentIds) || !studentIds.length) {
-      res.status(200).send({ students: [] });
-      return;
-    }
 
-    for (var i = 0, len = studentIds.length; i < len; i++)  {
+    // for each element, omit the field and keep the values only
+    for (let i = 0, len = studentIds.length; i < len; i++)  {
       studentIds[i] = studentIds[i].student_id;
     }
+
     res.status(200).send({ students: studentIds });
   } catch (err) {
     console.error(err);
@@ -245,11 +244,13 @@ router.post('/:id/students', async (req, res, next) => {
  * GET /courses/{id}/roster
  *
  * Fetches a CSV file containing a list of the students enrolled in the Course.
+ * The results will both be saved to a CSV file on the /roster directory of the
+ * server and be sent back to the client via the response.
  *
  * Only an authenticated admin or the instructor of the Course can fetch the
  * roster.
  */
-router.get('/:id/roster', async (req, res, next) => {
+router.get('/:id/roster', async (req, res) => {
   try {
     const roster = await getCourseRoster(parseInt(req.params.id));
     if (!Array.isArray(roster) || !roster.length) {
@@ -263,9 +264,7 @@ router.get('/:id/roster', async (req, res, next) => {
       const csvData = json2csv.parse(roster);
       const csvPath = `${__dirname}/../rosters/course${req.params.id}.csv`;
       fs.writeFile(csvPath, csvData, (err) => {
-        if (err) {
-          throw(err);
-        }
+        if (err) throw(err);
 
         res.status(200).type('text/csv').send(csvData);
       });
@@ -279,6 +278,29 @@ router.get('/:id/roster', async (req, res, next) => {
     console.error(err);
     res.status(500).send({
       error: 'Unable to fetch the Course roster. Please try again later.'
+    });
+  }
+});
+
+/*
+ * GET /courses/{id}/assignments
+ *
+ * Fetches a list of the Assignments for the Course.
+ */
+router.get('/:id/assignments', async (req, res) => {
+  try {
+    const assignmentIds = await getCourseAssignmentIds(parseInt(req.params.id));
+
+    // for each element, omit the field and keep the values only
+    for (let i = 0, len = assignmentIds.length; i < len; i++) {
+      assignmentIds[i] = assignmentIds[i].id;
+    }
+
+    res.status(200).send({ assignments: assignmentIds });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to fetch the Course Assignments. Please try again later.'
     });
   }
 });
