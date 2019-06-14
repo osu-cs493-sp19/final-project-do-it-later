@@ -358,12 +358,13 @@ router.get('/:id/roster', requireAuthentication, async (req, res, next) => {
 
     try {
       const csvData = json2csv.parse(roster);
-      const csvPath = `${__dirname}/../rosters/course${req.params.id}.csv`;
-      fs.writeFile(csvPath, csvData, (err) => {
-        if (err) throw(err);
+      // const csvPath = `${__dirname}/../rosters/course${req.params.id}.csv`;
+      // fs.writeFile(csvPath, csvData, (err) => {
+      //   if (err) throw(err);
 
-        res.status(200).type('text/csv').send(csvData);
-      });
+      //   res.status(200).type('text/csv').send(csvData);
+      // });
+      res.status(200).type('text/csv').send(csvData);
     } catch (err) {
       console.error(err);
       res.status(500).send({
