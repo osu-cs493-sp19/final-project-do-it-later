@@ -15,6 +15,9 @@ exe docker-compose down -v
 # compose MySQL in detached mode
 exe docker-compose up -d mysql
 
+# compose MongoDB in detached mode
+exe docker-compose up -d mongodb
+
 # # put stuff that needs to be composed before running the API server here
 # # for example, compose RabbitMQ in detached mode
 # echo

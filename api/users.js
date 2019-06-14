@@ -45,6 +45,7 @@ router.post('/', async (req, res) => {
           error: 'Some fields in the request body exceed the limits.'
         });
       } else {
+        console.error(err);
         res.status(500).send({
           error: 'Error inserting user into DB. Please try again later.'
         });
@@ -73,6 +74,7 @@ router.post('/login', async (req, res) => {
         });
       }
     } catch (err) {
+      console.error(err);
       res.status(500).send({
         error: 'Error validating user. Please try again later.'
       });
