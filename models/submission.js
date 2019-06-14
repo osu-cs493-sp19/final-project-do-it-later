@@ -42,7 +42,8 @@ async function getSubmissionsPage(page) {
    * Compute last page number and make sure page is within allowed bounds.
    * Compute offset into collection.
    */
-  const pageSize = 3;
+  //const pageSize = 3;
+  const pageSize = parseInt(process.env.PAGINATION_PAGE_SIZE) || 3;
   const lastPage = Math.ceil(count / pageSize);
   page = page > lastPage ? lastPage : page;
   page = page < 1 ? 1 : page;
