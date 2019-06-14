@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 
 const api = require('./api');
 const { connectToDB } = require('./lib/mongo');
+const { rateLimit } = require('./api/rate_limiting');
+
 const app = express();
 const port = process.env.PORT || 8000;
 
@@ -17,8 +19,13 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 /*
- * All routes for the API are written in modules in the api/ directory. The
- * top-level router lives in api/index.js. That's what we include here, and
+ * Limit number of requests per minutes based on IP address and Timestamp
+ */
+app.use(rateLimit);
+
+/*
+ * All routes for the API are written in modules in the api/ directory.  The
+ * top-level router lives in api/index.js.  That's what we include here, and
  * it provides all of the routes.
  */
 app.use('/', api);
