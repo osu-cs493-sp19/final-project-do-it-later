@@ -381,7 +381,17 @@ router.post('/:id/submissions', requireAuthentication, upload.single('file'), as
 
   // Fetch a list of student ids who are enrolled in this course
   const studentIds = await getCourseStudentIds(parseInt(course.id));
-
+  if (!studentIds.length) {
+    res.status(403).send({
+      error: 'You are not authorized to create this resource.'
+    });
+    return;
+  }
+  // Simplify the json object got from getCourseStudentIds
+  // so we can easily compare with req.authenticatedUserId later
+  for (let i = 0, len = studentIds.length; i < len; i++) {
+    studentIds[i] = studentIds[i].student_id;
+  }
   // only enrolled students of the Course can proceed
   const authorized = req.authenticatedUserRole === 'student' && // is a student
                       studentIds.includes(req.authenticatedUserId); // enrolled in this course
@@ -403,7 +413,7 @@ router.post('/:id/submissions', requireAuthentication, upload.single('file'), as
       contentType: req.file.mimetype,
       // submission metadata
       assignment_id: req.body.assignment_id,
-      student_id: req.body.student_id,
+      student_id: req.authenticatedUserId,
       timestamp: req.body.timestamp,
     };
     //console.log("== submission: ", submission);
@@ -452,10 +462,21 @@ router.get('/:assignment_id/submissions/:submission_id', requireAuthentication, 
     return;
   }
 
-  const authorized = false;
+  let authorized = false;
   if (req.authenticatedUserRole === 'student') {
     // Fetch a list of student ids who are enrolled in this course
     const studentIds = await getCourseStudentIds(parseInt(course.id));
+    if (!studentIds.length) {
+      res.status(403).send({
+        error: 'You are not authorized to create this resource.'
+      });
+      return;
+    }
+    // Simplify the json object got from getCourseStudentIds
+    // so we can easily compare with req.authenticatedUserId later
+    for (let i = 0, len = studentIds.length; i < len; i++) {
+      studentIds[i] = studentIds[i].student_id;
+    }
     authorized = studentIds.includes(req.authenticatedUserId) && // is enrolled in this course
                   submission.metadata.student_id == req.authenticatedUserId; // owns this submission
   } else {
@@ -518,10 +539,21 @@ router.get('/:assignment_id/submissions/:submission_id/file/:filename',
     return;
   }
 
-  const authorized = false;
+  let authorized = false;
   if (req.authenticatedUserRole === 'student') {
     // Fetch a list of student ids who are enrolled in this course
     const studentIds = await getCourseStudentIds(parseInt(course.id));
+    if (!studentIds.length) {
+      res.status(403).send({
+        error: 'You are not authorized to create this resource.'
+      });
+      return;
+    }
+    // Simplify the json object got from getCourseStudentIds
+    // so we can easily compare with req.authenticatedUserId later
+    for (let i = 0, len = studentIds.length; i < len; i++) {
+      studentIds[i] = studentIds[i].student_id;
+    }
     authorized = studentIds.includes(req.authenticatedUserId) && // is enrolled in this course
                   submission.metadata.student_id == req.authenticatedUserId; // owns this submission
   } else {
