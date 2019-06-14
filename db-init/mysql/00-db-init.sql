@@ -119,21 +119,6 @@ VALUES
   (10, 18, 'Project Step 7: Turn in Final Working Project', 100, '2019-03-19T23:59:59-07:00');
 
 --
--- Table structure for table `submissions`
---
-DROP TABLE IF EXISTS `submissions`;
-CREATE TABLE `submissions` (
-  `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `assignment_id` INT(10) UNSIGNED NOT NULL,
-  `student_id` INT(10) UNSIGNED NOT NULL,
-  `timestamp` VARCHAR(27) NOT NULL,  -- ISO 8601 Datetime
-  `file` VARCHAR(256) NOT NULL,
-  PRIMARY KEY (`id`),
-  FOREIGN KEY (`assignment_id`) REFERENCES `assignments`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`student_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
---
 -- Table structure for table `courses_students`
 -- (Since Course and Student have a many-to-many relationship)
 --
