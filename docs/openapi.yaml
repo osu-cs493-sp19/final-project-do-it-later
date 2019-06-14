@@ -191,7 +191,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  submissions:
+                  courses:
                     type: array
                     items:
                       $ref: '#/components/schemas/Course'
@@ -224,7 +224,7 @@ paths:
                       - type: string
                     description: >
                       Unique ID of the created Course.  Exact type/format will depend on your implementation but will likely be either an integer or a string.
-                    example: "123"
+                    example: 123
         '400':
           description: >
             The request body was either not present or did not contain a valid Course object.
@@ -371,7 +371,7 @@ paths:
                       oneOf:
                         - type: integer
                         - type: string
-                    example: [ "123", "456" ]
+                    example: [ 123, 456 ]
         '403':
           description: >
             The request was not made by an authenticated User satisfying the authorization criteria described above.
@@ -409,7 +409,7 @@ paths:
                       - type: integer
                       - type: string
                   description: Students to be enrolled in the Course.
-                  example: [ "123", "456" ]
+                  example: [ 123, 456 ]
                 remove:
                   type: array
                   items:
@@ -417,7 +417,7 @@ paths:
                       - type: integer
                       - type: string
                   description: Students to be unenrolled from the Course.
-                  example: [ "123", "456" ]
+                  example: [ 123, 456 ]
       responses:
         '200':
           description: Success
@@ -470,7 +470,7 @@ paths:
               schema:
                 type: string
                 example: |
-                  123,"Jane Doe",doej@oregonstate.edu
+                  123,"Jane Doe","doej@oregonstate.edu"
                   ...
         '403':
           description: >
@@ -520,7 +520,7 @@ paths:
                       oneOf:
                         - type: integer
                         - type: string
-                    example: [ "123", "456" ]
+                    example: [ 123, 456 ]
         '404':
           description: Specified Course `id` not found.
           content:
@@ -824,7 +824,7 @@ components:
         number:
           type: string
           description: Course number.
-          example: 493
+          example: "493"
         title:
           type: string
           description: Course title.
@@ -839,7 +839,7 @@ components:
             - type: string
           description: >
             ID for Course instructor.  Exact type/format will depend on your implementation but will likely be either an integer or a string.  This ID must correspond to a User with the 'instructor' role.
-          example: "123"
+          example: 123
 
     Assignment:
       description: >
@@ -852,7 +852,7 @@ components:
             - type: string
           description: >
             ID of the Course associated with the Assignment.  Exact type/format will depend on your implementation but will likely be either an integer or a string.
-          example: "123"
+          example: 123
         title:
           type: string
           description: Assignment description.
@@ -879,7 +879,7 @@ components:
             - type: string
           description: >
             ID of the Assignment to which the Submission corresponds.  Exact type/format will depend on your implementation but will likely be either an integer or a string.
-          example: "123"
+          example: 123
         student_id:
           oneOf:
             - type: integer
