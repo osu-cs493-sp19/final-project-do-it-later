@@ -20,7 +20,7 @@ router.post('/', async (req, res) => {
   if (validateAgainstSchema(req.body, UserSchema)) {
     if (req.body.role === 'admin' || req.body.role === 'instructor') {
       // must be an admin to create new admins and instructors
-      const isAdmin = await validateRole(req, 'admin');
+      const isAdmin = validateRole(req, 'admin');
       if (!isAdmin) {
         res.status(401).send({
           error: 'Only admins can create new admins and instructors.'
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
       const authenticated = await validateUser(req.body.email, req.body.password);
       if (authenticated) {
         const user = await getUserByEmail(req.body.email);
-        const token = generateAuthToken(user.id);
+        const token = generateAuthToken(user.id, user.role);
         res.status(200).send({
           token: token
         });
@@ -92,11 +92,10 @@ router.get('/:id', requireAuthentication, async (req, res, next) => {
 
     // check existence of the requested user before checking authorization
     if (requestedUser) {
-      const currentUser = await getUserById(req.authenticatedUserId);
-
       // admins can see everything. Current logged in user can only see data
       // of themselves
-      if (id === req.authenticatedUserId || currentUser.role === 'admin') {
+      if (id === req.authenticatedUserId ||
+          req.authenticatedUserRole === 'admin') {
         if (requestedUser.role === 'instructor') {
           // instructors can see the courses they teach
           const instructorCourseIds = await getInstructorCoursesById(id);
