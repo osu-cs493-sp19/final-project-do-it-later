@@ -124,7 +124,7 @@ exports.addCourse = addCourse;
  * - reject with an error on failure.
  *
  * Notes:
- * Does not fetch Students enrolled in the Course or Assignments for the Course.
+ * Does not fetch students enrolled in the Course or Assignments for the Course.
  */
 function getCourseById(id) {
   return new Promise((resolve, reject) => {
@@ -149,7 +149,7 @@ exports.getCourseById = getCourseById;
  * - rejects with an error on failure.
  *
  * Notes:
- * Does not modify this Course's Students and Assignments.
+ * Does not modify this Course's students and Assignments.
  */
 function updateCourseById(id, course) {
   return new Promise((resolve, reject) => {
@@ -189,7 +189,7 @@ exports.updateCourseById = updateCourseById;
  * - rejects with an error on failure.
  *
  * Notes:
- * All Students enrolling in this Course and all Assignments for this Course
+ * All students enrolling in this Course and all Assignments for this Course
  * will also be removed.
  */
 function deleteCourseById(id) {
@@ -208,14 +208,14 @@ function deleteCourseById(id) {
 exports.deleteCourseById = deleteCourseById;
 
 /*
- * Fetches a list of students enrolled in the Course.
+ * Fetches a list of IDs of students enrolled in the Course.
  *
  * Returns a Promise that
- * - resolves to a list that contains the User IDs of all Students currently
+ * - resolves to a list that contains the User IDs of all students currently
  * enrolled in the Course on success.
  * - rejects with an error on failure.
  */
-function getCourseStudents(courseId) {
+function getCourseStudentIds(courseId) {
   return new Promise((resolve, reject) => {
     const sql = 'SELECT student_id FROM courses_students WHERE course_id = ?';
     mysqlPool.query(sql, [courseId], (err, results) => {
@@ -227,7 +227,7 @@ function getCourseStudents(courseId) {
     });
   });
 }
-exports.getCourseStudents = getCourseStudents;
+exports.getCourseStudentIds = getCourseStudentIds;
 
 /*
  * Validates the request body of POST /courses/{id}/students.
@@ -290,13 +290,14 @@ function deleteStudentFromCourse(courseId, studentId) {
  * Updates enrollment for a Course.
  *
  * Returns a Promise that
- * - resolves to
+ * - resolves to an object containing the list of added students and the list of
+ * removed students.
  * - reject with an error on failure.
  */
 function updateCourseEnrollment(courseId, updateObj) {
   return new Promise(async (resolve, reject) => {
-    let addCount = 0;
-    let removeCount = 0;
+    let addedStudents = [];
+    let removedStudents = [];
 
     // if there is an `add` array field, enroll those Students
     if (updateObj.add) {
@@ -311,7 +312,7 @@ function updateCourseEnrollment(courseId, updateObj) {
 
           // insert this student to the Course
           await addStudentToCourse(courseId, userId);
-          addCount++;
+          addedStudents.push(userId);
         } catch (err) {
           // only reject with errors that are not about duplicate entries
           if (!err || err.code !== 'ER_DUP_ENTRY') {
@@ -331,7 +332,7 @@ function updateCourseEnrollment(courseId, updateObj) {
           // if the pair (courseId, userId) doesn't match any row
           const deleteSuccess = await deleteStudentFromCourse(courseId, userId);
           if (deleteSuccess) {
-            removeCount++;
+            removedStudents.push(userId);
           }
         } catch (err) {
           reject(err);
@@ -341,9 +342,40 @@ function updateCourseEnrollment(courseId, updateObj) {
     }
 
     resolve({
-      addCount: addCount,
-      removeCount: removeCount
+      added: addedStudents,
+      removed: removedStudents
     });
   });
 }
 exports.updateCourseEnrollment = updateCourseEnrollment;
+
+/*
+ * Fetches the Course roster.
+ *
+ * Returns a Promise that
+ * - resolves to a list of objects, each of which contains the info of a student
+ * enrolled in the Course on success, or
+ * - rejects with an error on failure.
+ */
+function getCourseRoster(courseId) {
+  return new Promise((resolve, reject) => {
+    const sql =
+      `SELECT
+        u.id,
+        u.name,
+        u.email
+      FROM users AS u
+      INNER JOIN courses_students AS cs
+      ON u.id = cs.student_id
+      WHERE cs.course_id = ?`;
+    mysqlPool.query(sql, [courseId], (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      resolve(results);
+    });
+  });
+}
+exports.getCourseRoster = getCourseRoster;

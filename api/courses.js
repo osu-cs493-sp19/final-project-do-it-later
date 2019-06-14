@@ -3,6 +3,8 @@
  */
 
 const router = require('express').Router();
+const json2csv = require('json2csv');
+const fs = require('fs');
 
 const {
   validateAgainstSchema,
@@ -15,16 +17,17 @@ const {
   getCourseById,
   updateCourseById,
   deleteCourseById,
-  getCourseStudents,
+  getCourseStudentIds,
   validateEnrollmentUpdateBody,
-  updateCourseEnrollment
+  updateCourseEnrollment,
+  getCourseRoster
 } = require('../models/course');
 
 /*
  * GET /courses
  *
  * Fetches the paginated list of all Courses. The Courses returned do not
- * contain the list of Students in the Course or the Assignments for the Course.
+ * contain the list of students in the Course or the Assignments for the Course.
  */
 router.get('/', async (req, res) => {
   try {
@@ -94,7 +97,7 @@ router.post('/', async (req, res) => {
 /*
  * GET /courses/{id}
  *
- * Fetches data about a specific Course, excluding the list of Students enrolled
+ * Fetches data about a specific Course, excluding the list of students enrolled
  * in the course and the list of Assignments for the courses.
  */
 router.get('/:id', async (req, res, next) => {
@@ -117,7 +120,7 @@ router.get('/:id', async (req, res, next) => {
 /*
  * PATCH /courses/{id}
  *
- * Performs a partial update on the data for the Course. Enrolled Students and
+ * Performs a partial update on the data for the Course. Enrolled students and
  * Assignments for the Course will not be modified via this endpoint.
  *
  * Only an authenticated admin User or an authenticated instructor User whose
@@ -153,7 +156,7 @@ router.patch('/:id', async (req, res, next) => {
  * DELETE /courses/{id}
  *
  * Completely removes the data for the specified Course, including all enrolled
- * Students, all Assignments, etc.
+ * students, all Assignments, etc.
  *
  * Only an authenticated admin User can remove a Course.
  */
@@ -184,20 +187,20 @@ router.delete('/:id', async (req, res, next) => {
  */
 router.get('/:id/students', async (req, res, next) => {
   try {
-    const students = await getCourseStudents(parseInt(req.params.id));
-    if (!students || !students.length) {
-      next();
+    const studentIds = await getCourseStudentIds(parseInt(req.params.id));
+    if (!Array.isArray(studentIds) || !studentIds.length) {
+      res.status(200).send({ students: [] });
       return;
     }
 
-    for (var i = 0, len = students.length; i < len; i++)  {
-      students[i] = students[i].student_id;
+    for (var i = 0, len = studentIds.length; i < len; i++)  {
+      studentIds[i] = studentIds[i].student_id;
     }
-    res.status(200).send({ students: students });
+    res.status(200).send({ students: studentIds });
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Unable to fetch the Course's students. Please try again later."
+      error: 'Unable to fetch the Course students. Please try again later.'
     });
   }
 });
@@ -231,11 +234,53 @@ router.post('/:id/students', async (req, res, next) => {
     const updateResult = await updateCourseEnrollment(courseId, req.body);
     res.status(200).send(updateResult);
   } catch (err) {
+    console.error(err);
     res.status(500).send({
-      error: "Unable to update the Course's students. Please try again later."
+      error: 'Unable to update the Course enrollment. Please try again later.'
     });
   }
 });
 
+/*
+ * GET /courses/{id}/roster
+ *
+ * Fetches a CSV file containing a list of the students enrolled in the Course.
+ *
+ * Only an authenticated admin or the instructor of the Course can fetch the
+ * roster.
+ */
+router.get('/:id/roster', async (req, res, next) => {
+  try {
+    const roster = await getCourseRoster(parseInt(req.params.id));
+    if (!Array.isArray(roster) || !roster.length) {
+      res.status(404).send({
+        error: 'Course does not exist or does not have any student enrolled.'
+      });
+      return;
+    }
+
+    try {
+      const csvData = json2csv.parse(roster);
+      const csvPath = `${__dirname}/../rosters/course${req.params.id}.csv`;
+      fs.writeFile(csvPath, csvData, (err) => {
+        if (err) {
+          throw(err);
+        }
+
+        res.status(200).type('text/csv').send(csvData);
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({
+        error: 'Unable to export to CSV. Please try again later.'
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: 'Unable to fetch the Course roster. Please try again later.'
+    });
+  }
+});
 
 module.exports = router;
