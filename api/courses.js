@@ -11,6 +11,9 @@ const {
   validatePatchAgainstSchema
 } = require('../lib/validation');
 const {
+  requireAuthentication
+} = require('../lib/auth');
+const {
   CourseSchema,
   getCoursePage,
   addCourse,
@@ -76,10 +79,17 @@ router.get('/', async (req, res) => {
  * Creates a new Course with specified data and adds it to the database. Only
  * authenticated User with admin role can create a new Course.
  */
-router.post('/', async (req, res) => {
+router.post('/', requireAuthentication, async (req, res) => {
   if (!validateAgainstSchema(req.body, CourseSchema)) {
     res.status(400).send({
       error: 'The request body was not a valid Course object.'
+    });
+    return;
+  }
+
+  if (req.authenticatedUserRole !== 'admin') {
+    res.status(403).send({
+      error: 'Only admins can create new Courses.'
     });
     return;
   }
@@ -127,7 +137,7 @@ router.get('/:id', async (req, res, next) => {
  * Only an authenticated admin User or an authenticated instructor User whose
  * ID matches the `instructor_id` of the Course can update Course information.
  */
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', requireAuthentication, async (req, res, next) => {
   const id = parseInt(req.params.id);
 
   if (!validatePatchAgainstSchema(req.body, CourseSchema)) {
@@ -138,6 +148,24 @@ router.patch('/:id', async (req, res, next) => {
   }
 
   try {
+    // ensure the Course exists
+    const course = await getCourseById(id);
+    if (!course) {
+      next();
+      return;
+    }
+
+    // only admins and instructor of the Course can proceed
+    const authenticated = req.authenticatedUserRole === 'admin' ||
+      (req.authenticatedUserRole === 'instructor' &&
+        req.authenticatedUserId === course.instructor_id);
+    if (!authenticated) {
+      res.status(403).send({
+        error: 'Only admins and instructor of the Course can update the Course.'
+      });
+      return;
+    }
+
     const updateSuccess = await updateCourseById(id, req.body);
     if (!updateSuccess) {
       next();
@@ -161,7 +189,14 @@ router.patch('/:id', async (req, res, next) => {
  *
  * Only an authenticated admin User can remove a Course.
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAuthentication, async (req, res, next) => {
+  if (req.authenticatedUserRole !== 'admin') {
+    res.status(403).send({
+      error: 'Only admins can remove the Course.'
+    });
+    return;
+  }
+
   try {
     const deleteSuccess = await deleteCourseById(parseInt(req.params.id));
     if (!deleteSuccess) {
@@ -186,9 +221,30 @@ router.delete('/:id', async (req, res, next) => {
  * Only an authenticated admin or an instructor who teaches this Course can
  * fetch the student list.
  */
-router.get('/:id/students', async (req, res) => {
+router.get('/:id/students', requireAuthentication, async (req, res, next) => {
+  const id = parseInt(req.params.id);
+
   try {
-    const studentIds = await getCourseStudentIds(parseInt(req.params.id));
+    // ensure the Course exists
+    const course = await getCourseById(id);
+    if (!course) {
+      next();
+      return;
+    }
+
+    // only admins and instructor of the Course can proceed
+    const authenticated = req.authenticatedUserRole === 'admin' ||
+      (req.authenticatedUserRole === 'instructor' &&
+        req.authenticatedUserId === course.instructor_id);
+    if (!authenticated) {
+      res.status(403).send({
+        error: 'Only admins and instructor of the Course can fetch ' +
+               'the student list of the Course.'
+      });
+      return;
+    }
+
+    const studentIds = await getCourseStudentIds(id);
 
     // for each element, omit the field and keep the values only
     for (let i = 0, len = studentIds.length; i < len; i++)  {
@@ -212,21 +268,33 @@ router.get('/:id/students', async (req, res) => {
  * Only an authenticated admin or an instructor who teaches this Course can
  * update enrollment for this Course.
  */
-router.post('/:id/students', async (req, res, next) => {
+router.post('/:id/students', requireAuthentication, async (req, res, next) => {
   const courseId = parseInt(req.params.id);
 
-  try {
-    if (!validateEnrollmentUpdateBody(req.body)) {
-      res.status(400).send({
-        error: 'The provided body was not a valid enrollment update object.'
-      });
-      return;
-    }
+  if (!validateEnrollmentUpdateBody(req.body)) {
+    res.status(400).send({
+      error: 'The provided body was not a valid enrollment update object.'
+    });
+    return;
+  }
 
-    // make sure the course exists before updating its students
+  try {
+    // ensure the Course exists
     const course = await getCourseById(courseId);
     if (!course) {
       next();
+      return;
+    }
+
+    // only admins and instructor of the Course can proceed
+    const authenticated = req.authenticatedUserRole === 'admin' ||
+      (req.authenticatedUserRole === 'instructor' &&
+        req.authenticatedUserId === course.instructor_id);
+    if (!authenticated) {
+      res.status(403).send({
+        error: 'Only admins and instructor of the Course can update ' +
+               'the enrollment of the Course.'
+      });
       return;
     }
 
@@ -250,12 +318,33 @@ router.post('/:id/students', async (req, res, next) => {
  * Only an authenticated admin or the instructor of the Course can fetch the
  * roster.
  */
-router.get('/:id/roster', async (req, res) => {
+router.get('/:id/roster', requireAuthentication, async (req, res, next) => {
+  const id = parseInt(req.params.id);
+
   try {
-    const roster = await getCourseRoster(parseInt(req.params.id));
-    if (!Array.isArray(roster) || !roster.length) {
+    // ensure the Course exists
+    const course = await getCourseById(id);
+    if (!course) {
+      next();
+      return;
+    }
+
+    // only admins and instructor of the Course can proceed
+    const authenticated = req.authenticatedUserRole === 'admin' ||
+      (req.authenticatedUserRole === 'instructor' &&
+        req.authenticatedUserId === course.instructor_id);
+    if (!authenticated) {
+      res.status(403).send({
+        error: 'Only admins and instructor of the Course can fetch ' +
+               'the Course roster.'
+      });
+      return;
+    }
+
+    const roster = await getCourseRoster(id);
+    if (!roster.length) {
       res.status(404).send({
-        error: 'Course does not exist or does not have any student enrolled.'
+        error: 'Course does not have any student enrolled.'
       });
       return;
     }

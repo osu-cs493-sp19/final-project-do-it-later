@@ -62,7 +62,7 @@ function getCoursePage(page, subject, number, term) {
 
         // pagination must come after filtering
         const numCourses = results.length;
-        const pageSize = 10;  // Courses per page
+        const pageSize = parseInt(process.env.PAGINATION_PAGE_SIZE);
 
         // e.g. if 31 Courses in total, then
         // page 1 (1-10), page 2 (11-20), page 3 (21-30), page 4 (31)
