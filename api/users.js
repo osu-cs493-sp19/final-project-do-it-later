@@ -4,7 +4,7 @@ const { validateAgainstSchema } = require('../lib/validation');
 const {
   generateAuthToken,
   requireAuthentication,
-  isAdmin
+  validateRole
 } = require('../lib/auth');
 const {
   UserSchema,
@@ -19,8 +19,9 @@ const {
 router.post('/', async (req, res) => {
   if (validateAgainstSchema(req.body, UserSchema)) {
     if (req.body.role === 'admin' || req.body.role === 'instructor') {
-      const status = await isAdmin(req);
-      if (status === false) {
+      // must be an admin to create new admins and instructors
+      const isAdmin = await validateRole(req, 'admin');
+      if (!isAdmin) {
         res.status(401).send({
           error: 'Only admins can create new admins and instructors.'
         });
@@ -36,7 +37,7 @@ router.post('/', async (req, res) => {
     } catch (err) {
       console.error(err);
       if (err && err.code === 'ER_DUP_ENTRY') {
-        res.status(400).send({
+        res.status(409).send({
           error: 'Email already exists.'
         });
       } else {
