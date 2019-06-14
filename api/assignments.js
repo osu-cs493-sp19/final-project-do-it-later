@@ -451,7 +451,7 @@ router.post('/:id/submissions', upload.single('file'), async (req, res, next) =>
 
 // Get submission by id
 router.get('/:assignment_id/submissions/:submission_id',
-            requireAuthentication,
+            //requireAuthentication,
             async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.assignment_id);
@@ -497,7 +497,7 @@ router.get('/:assignment_id/submissions/:submission_id',
   }
 
   // Does this student own this assignment?
-  if (submission.student_id != user.id) {
+  if (submission.metadata.student_id != user.id) {
     res.status(403).send({
       error: "Unauthorized to access the specified resource. You don't own this assignment"
     });
@@ -506,13 +506,13 @@ router.get('/:assignment_id/submissions/:submission_id',
 
   try {
     const responseBody = {
-      assignment_id: submission.assignment_id,
-      student_id: submission.student_id,
-      timestamp: submission.timestamp,
+      assignment_id: submission.metadata.assignment_id,
+      student_id: submission.metadata.student_id,
+      timestamp: submission.metadata.timestamp,
       file: submission.filename, // filename
       links: {
-        submission_file: `/assignments/${submission.assignment_id}/submissions/${submission.id}/file/${submission.filename}`,
-        assignment: `/assignments/${submission.assignment_id}`,
+        submission_file: `/assignments/${submission.metadata.assignment_id}/submissions/${submission._id}/file/${submission.filename}`,
+        assignment: `/assignments/${submission.metadata.assignment_id}`,
         course: `/courses/${course.id}`
       }
     };
