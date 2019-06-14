@@ -19,13 +19,29 @@ const {
   deleteAssignmentById,
 } = require('../models/assignment');
 
-// const {
-//   getUserById
-// } = require('../models/user');
+const {
+  UserSchema,
+  insertNewUser,
+  validateUser,
+  getUserById,
+  getUserByEmail,
+  getInstructorCoursesById,
+  getStudentCoursesById
+} = require('../models/user');
 
-// const {
-//   getCourseById
-// } = require('../models/course');
+const {
+  CourseSchema,
+  getCoursePage,
+  addCourse,
+  getCourseById,
+  updateCourseById,
+  deleteCourseById,
+  getCourseStudentIds,
+  validateEnrollmentUpdateBody,
+  updateCourseEnrollment,
+  getCourseRoster,
+  getCourseAssignmentIds
+} = require('../models/course');
 
 const {
   SubmissionSchema,
@@ -188,8 +204,7 @@ router.patch('/:id', requireAuthentication, async (req, res) => {
     Only an authenticated User with 'admin' role or an authenticated 'instructor' User
     whose ID matches the instructor_id of the Course can delete an Assignment.
 */
-router.delete('/:id', async (req, res) => {
-//router.delete('/:id', requireAuthentication, async (req, res) => {
+router.delete('/:id', requireAuthentication, async (req, res) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
   const assignment = await getAssignmentById(assignment_id);
@@ -263,8 +278,7 @@ router.delete('/:id', async (req, res) => {
  *    whose ID matches the instructor_id of the Course corresponding
  *    to the Assignment's courseId can fetch the Submissions for an Assignment.
  */
-router.get('/:id/submissions', async (req, res, next) => {
-//router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
+router.get('/:id/submissions', requireAuthentication, async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.id);
   const assignment = await getAssignmentById(assignment_id);
@@ -364,8 +378,7 @@ function removeUploadedFile(file_path) {
  *      powered by MongoDB while its submission data is stored in the same MySQL database
  *      that we have been using for Users, Courses, and Assignments
  */
-router.post('/:id/submissions', upload.single('file'), async (req, res, next) => {
-//router.post('/:id/submissions', requireAuthentication, upload.single('file'), async (req, res, next) => {
+router.post('/:id/submissions', requireAuthentication, upload.single('file'), async (req, res, next) => {
   console.log("== req.file:", req.file);
   console.log("== req.body:", req.body);
 
@@ -450,9 +463,7 @@ router.post('/:id/submissions', upload.single('file'), async (req, res, next) =>
 });
 
 // Get submission by id
-router.get('/:assignment_id/submissions/:submission_id',
-            //requireAuthentication,
-            async (req, res, next) => {
+router.get('/:assignment_id/submissions/:submission_id', requireAuthentication, async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.assignment_id);
   const assignment = await getAssignmentById(assignment_id);
@@ -527,7 +538,7 @@ router.get('/:assignment_id/submissions/:submission_id',
 
 // Get submission file by id
 router.get('/:assignment_id/submissions/:submission_id/file/:filename',
-            //requireAuthentication,
+            requireAuthentication,
             async (req, res, next) => {
   // Does this assignment even exist?
   const assignment_id = parseInt(req.params.assignment_id);
