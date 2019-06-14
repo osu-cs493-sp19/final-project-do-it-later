@@ -40,6 +40,10 @@ router.post('/', async (req, res) => {
         res.status(409).send({
           error: 'Email already exists.'
         });
+      } else if (err && err.code === 'ER_DATA_TOO_LONG') {
+        res.status(400).send({
+          error: 'Some fields in the request body exceed the limits.'
+        });
       } else {
         res.status(500).send({
           error: 'Error inserting user into DB. Please try again later.'

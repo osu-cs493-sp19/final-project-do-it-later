@@ -99,9 +99,15 @@ router.post('/', requireAuthentication, async (req, res) => {
     res.status(201).send({ id: insertId });
   } catch (err) {
     console.error(err);
-    res.status(500).send({
-      error: 'Unable to insert the Course. Please try again later.'
-    });
+    if (err && err.code === 'ER_DATA_TOO_LONG') {
+      res.status(400).send({
+        error: 'Some fields in the request body exceed the limits.'
+      });
+    } else {
+      res.status(500).send({
+        error: 'Unable to insert the Course. Please try again later.'
+      });
+    }
   }
 });
 
